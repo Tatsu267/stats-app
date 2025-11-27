@@ -1,106 +1,104 @@
 import { getApiKey } from './db';
 
-// 解説・チャット生成の共通エンドポイント処理
-async function callGeminiApi(messages, apiKey) {
-    try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: messages,
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 2000,
-                }
-            })
-        });
+// 共通リクエスト処理
+async function callGeminiApi(payload, apiKey) {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("Gemini API Error Detail:", errorData);
-            throw new Error(errorData.error?.message || "AIからの応答取得に失敗しました");
-        }
-
-        const data = await response.json();
-        
-        if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts.length > 0) {
-            return data.candidates[0].content.parts[0].text;
-        } else {
-            throw new Error("テキストが生成されませんでした。");
-        }
-    } catch (error) {
-        console.error("AI Error:", error);
-        throw error;
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || "AIエラーが発生しました");
     }
+
+    const data = await response.json();
+    if (data.candidates && data.candidates.length > 0 && data.candidates[0].content) {
+        return data.candidates[0].content.parts[0].text;
+    }
+    throw new Error("テキストが生成されませんでした");
 }
 
-// 初回の解説生成
+// 解説生成（既存）
 export async function getInitialExplanation(question, selectedOptionIndex, correctOptionIndex) {
     const apiKey = await getApiKey();
-    if (!apiKey) throw new Error("APIキーが設定されていません。設定画面で入力してください。");
+    if (!apiKey) throw new Error("APIキーを設定してください");
 
     const selectedOption = question.options[selectedOptionIndex];
     const correctOption = question.options[correctOptionIndex];
 
     const prompt = `
-    あなたは統計検定準1級レベルの専門知識を持つ、親切で分かりやすいチューターです。
-    ユーザーが以下の問題に回答しました。
+    あなたは統計検定準1級レベルの専門知識を持つチューターです。
+    以下の問題の解説を作成してください。挨拶は不要です。
 
-    【問題】
-    ${question.text}
-    
-    【選択肢】
-    ${question.options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n')}
-    
-    【ユーザーの回答】
-    ${selectedOption}
-    
-    【正解】
-    ${correctOption}
-    
-    【重要：出力の制約】
-    - 「はい、承知いたしました」「解説します」などの前置きや挨拶は**一切出力しないでください**。
-    - 必ず正誤判定から書き始めてください。
+    【問題】${question.text}
+    【選択肢】${question.options.join(', ')}
+    【回答】${selectedOption} (正解: ${correctOption})
 
-    【解説フォーマットの指示】
-    1. **数式**:
-       - 数式は必ず **LaTeX形式** で記述してください。
-       - 数式のブロックは \`$$\` (ドルマーク2つ) で囲んでください。
-       - インライン数式は \`$\` (ドルマーク1つ) で囲んでください。
-       - 例: 
-         $$
-         P(X=k) = {}_{n}C_{k} p^k (1-p)^{n-k}
-         $$
-    2. **強調**:
-       - 重要な単語は **太字** (\`**単語**\`) で。
-       - 注意点は __赤字__ (\`__注意点__\`) で。
-    3. **図解**:
-       - スマホでも崩れないよう、矢印などを使ったフロー図(\`\`\`diagram ... \`\`\`) で表現してください。
-    4. **構成**:
-       - 正誤判定 -> 論理的解説 -> 補足図解 -> 質問の促し
-
-    挨拶は省き、わかりやすく、かつ数学的に正確な解説をお願いします。
+    【ルール】
+    - 正誤判定から始める
+    - 数式はLaTeX形式 ($$または$)
+    - 重要箇所は太字(**)や赤字(__)
     `;
 
-    const messages = [{ role: "user", parts: [{ text: prompt }] }];
-    
-    return callGeminiApi(messages, apiKey);
+    return callGeminiApi({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
+    }, apiKey);
 }
 
-// 続けて質問するための関数
+// チャット応答（既存）
 export async function sendChatMessage(history, newMessage) {
+    const apiKey = await getApiKey();
+    if (!apiKey) throw new Error("APIキーを設定してください");
+    
+    const reminder = "\n(挨拶不要。数式はLaTeX形式)";
+    const nextMessages = [...history, { role: "user", parts: [{ text: newMessage + reminder }] }];
+
+    return callGeminiApi({
+        contents: nextMessages,
+        generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
+    }, apiKey);
+}
+
+// ▼▼▼ 新規追加: 問題生成機能 ▼▼▼
+export async function generateAiQuestion(category) {
     const apiKey = await getApiKey();
     if (!apiKey) throw new Error("APIキーが設定されていません。");
 
-    // 会話の途中でも挨拶が出ないように念押し
-    const reminder = "\n(挨拶不要。数式はLaTeX形式で $$...$$ または $...$ で囲んでください)";
+    const prompt = `
+    統計検定準1級レベルの「${category}」に関する、4択または5択の選択式問題を1問作成してください。
+    
+    【出力フォーマット】
+    以下のJSON形式**のみ**を出力してください。Markdownのcode block (\`\`\`json) も含めないでください。純粋なJSON文字列のみを返してください。
+    
+    {
+      "text": "問題文...",
+      "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"],
+      "correctIndex": 0,
+      "difficulty": "Medium",
+      "category": "${category}"
+    }
+    
+    【制約】
+    - 難易度は "Easy", "Medium", "Hard" のいずれか。
+    - 正解(correctIndex)はランダムに設定すること。
+    - 数式が必要な場合はLaTeX形式 ($$...$$ または $...$) を使用すること。
+    `;
 
-    const nextMessages = [
-        ...history,
-        { role: "user", parts: [{ text: newMessage + reminder }] }
-    ];
+    const jsonString = await callGeminiApi({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { 
+            temperature: 0.9, // 創造性を上げる
+            response_mime_type: "application/json" // GeminiにJSONモードを強制
+        }
+    }, apiKey);
 
-    return callGeminiApi(nextMessages, apiKey);
+    try {
+        return JSON.parse(jsonString);
+    } catch (e) {
+        console.error("JSON Parse Error:", e, jsonString);
+        throw new Error("AIが不正なデータを返しました。もう一度試してください。");
+    }
 }

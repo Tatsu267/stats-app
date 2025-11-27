@@ -1,35 +1,35 @@
 import React from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
-    BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell
+    BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell, YAxis
 } from 'recharts';
 import { TrendingUp, Trophy, CalendarDays, Timer, BookOpen, AlertTriangle } from 'lucide-react';
 import { db } from '../services/db';
-import questionsData from '../data/questions.json';
 import SkillRadarChart from '../components/dashboard/SkillRadarChart';
 import { CATEGORY_CONFIG, CATEGORY_NAMES } from '../utils/categories';
+import { getAttemptsWithQuestions } from '../utils/questionManager';
 
 export default function Analysis() {
     const attempts = useLiveQuery(() => db.attempts.toArray(), []);
+    
+    const analysisData = useLiveQuery(async () => {
+        const attemptsWithQ = await getAttemptsWithQuestions();
+        if (!attemptsWithQ || attemptsWithQ.length === 0) return null;
 
-    // データ集計ロジック
-    const analysisData = React.useMemo(() => {
-        // 初期化（全カテゴリを0で埋める）
         const categoryStats = {};
         CATEGORY_NAMES.forEach(cat => {
             categoryStats[cat] = { correct: 0, total: 0, totalTime: 0, name: cat };
         });
 
-        if (!attempts) return { allStats: Object.values(categoryStats), best: [], worst: [], totalTimeStr: '0分', totalCount: 0 };
-
         let totalStudyTimeSec = 0;
 
-        attempts.forEach(attempt => {
-            totalStudyTimeSec += attempt.timeTaken;
-            const question = questionsData.find(q => q.id === attempt.questionId);
+        // ▼▼▼ 修正箇所: 分割代入をやめ、オブジェクトから直接読み取る ▼▼▼
+        attemptsWithQ.forEach((attempt) => {
+            const question = attempt.question; // questionはプロパティとして入っている
             if (!question) return;
 
-            // カテゴリ名が一致する場合のみ集計
+            totalStudyTimeSec += attempt.timeTaken;
+            
             if (categoryStats[question.category]) {
                 categoryStats[question.category].total++;
                 categoryStats[question.category].totalTime += attempt.timeTaken;
@@ -38,6 +38,7 @@ export default function Analysis() {
                 }
             }
         });
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
         const statsArray = Object.values(categoryStats).map(stat => ({
             ...stat,
@@ -45,7 +46,6 @@ export default function Analysis() {
             avgTime: stat.total > 0 ? Math.round(stat.totalTime / stat.total) : 0
         }));
 
-        // 正答率でソート（未回答(total=0)は除外してランキングする）
         const activeStats = statsArray.filter(s => s.total > 0);
         const sortedByAccuracy = [...activeStats].sort((a, b) => b.accuracy - a.accuracy);
         
@@ -54,15 +54,15 @@ export default function Analysis() {
         const remainingMinutes = totalMinutes % 60;
 
         return {
-            allStats: statsArray, // レーダーチャート用（全分野含む）
+            allStats: statsArray,
             best: sortedByAccuracy.slice(0, 4), 
             worst: sortedByAccuracy.slice(-4).reverse(),
             totalTimeStr: totalHours > 0 ? `${totalHours}時間 ${remainingMinutes}分` : `${totalMinutes}分`,
-            totalCount: attempts.length
+            totalCount: attemptsWithQ.length
         };
-    }, [attempts]);
+    }, []);
 
-    // ウィークリーレポートデータ
+    // ウィークリーレポート
     const weeklyData = React.useMemo(() => {
         if (!attempts) return [];
         const last7Days = [...Array(7)].map((_, i) => {
@@ -84,14 +84,13 @@ export default function Analysis() {
         });
     }, [attempts]);
 
-    // チャート用データ整形
     const radarData = analysisData?.allStats.map(stat => ({
         subject: stat.name,
         A: stat.accuracy,
         fullMark: 100
     }));
 
-    if (!attempts || attempts.length === 0) {
+    if (!analysisData) {
         return (
             <div className="min-h-screen p-6 flex flex-col items-center justify-center text-center animate-fade-in">
                 <p className="text-gray-400 mb-4">データがありません。<br/>まずは演習を行いましょう。</p>
@@ -106,7 +105,6 @@ export default function Analysis() {
                 <p className="text-xs text-gray-400">パフォーマンスの詳細レポート</p>
             </header>
 
-            {/* 総学習時間 & 解答数 */}
             <div className="grid grid-cols-2 gap-4 mb-8">
                 <div className="card glass-card p-4 bg-gray-800/60 border border-gray-700/50">
                     <div className="flex items-center gap-2 mb-2 text-gray-400">
@@ -124,7 +122,6 @@ export default function Analysis() {
                 </div>
             </div>
 
-            {/* スキルレーダーチャート */}
             <section className="card glass-card p-6 mb-8 border border-gray-700/30 overflow-hidden bg-[#0F172A]">
                 <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
                     <TrendingUp size={18} className="text-purple-400" />
@@ -135,100 +132,62 @@ export default function Analysis() {
                 </div>
             </section>
 
-            {/* 得意・苦手分野 (復活) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                {/* 苦手 */}
                 <div className="card bg-red-900/10 border border-red-500/20 p-5 rounded-2xl">
-                    <div className="flex items-center gap-2 mb-4 text-red-400">
-                        <AlertTriangle size={18} />
-                        <h3 className="text-sm font-bold">苦手分野 (Worst 4)</h3>
-                    </div>
+                    <div className="flex items-center gap-2 mb-4 text-red-400"><AlertTriangle size={18} /><h3 className="text-sm font-bold">苦手分野 (Worst 4)</h3></div>
                     <div className="space-y-3">
-                        {analysisData?.worst.length > 0 ? (
-                            analysisData.worst.map(stat => (
-                                <div key={stat.name} className="flex justify-between items-center">
-                                    <span className="text-xs text-gray-300 truncate max-w-[100px]">{stat.name}</span>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                                            <div className="h-full bg-red-500" style={{ width: `${stat.accuracy}%` }} />
-                                        </div>
-                                        <span className="text-xs font-bold text-red-400 w-8 text-right">{stat.accuracy}%</span>
-                                    </div>
+                        {analysisData?.worst.length > 0 ? analysisData.worst.map(stat => (
+                            <div key={stat.name} className="flex justify-between items-center">
+                                <span className="text-xs text-gray-300 truncate max-w-[100px]">{stat.name}</span>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden"><div className="h-full bg-red-500" style={{ width: `${stat.accuracy}%` }} /></div>
+                                    <span className="text-xs font-bold text-red-400 w-8 text-right">{stat.accuracy}%</span>
                                 </div>
-                            ))
-                        ) : (
-                            <p className="text-xs text-gray-500 text-center py-2">データ不足です</p>
-                        )}
+                            </div>
+                        )) : <p className="text-xs text-gray-500 text-center py-2">データ不足です</p>}
                     </div>
                 </div>
-
-                {/* 得意 */}
                 <div className="card bg-blue-900/10 border border-blue-500/20 p-5 rounded-2xl">
-                    <div className="flex items-center gap-2 mb-4 text-blue-400">
-                        <Trophy size={18} />
-                        <h3 className="text-sm font-bold">得意分野 (Top 4)</h3>
-                    </div>
+                    <div className="flex items-center gap-2 mb-4 text-blue-400"><Trophy size={18} /><h3 className="text-sm font-bold">得意分野 (Top 4)</h3></div>
                     <div className="space-y-3">
-                        {analysisData?.best.length > 0 ? (
-                            analysisData.best.map(stat => (
-                                <div key={stat.name} className="flex justify-between items-center">
-                                    <span className="text-xs text-gray-300 truncate max-w-[100px]">{stat.name}</span>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                                            <div className="h-full bg-blue-500" style={{ width: `${stat.accuracy}%` }} />
-                                        </div>
-                                        <span className="text-xs font-bold text-blue-400 w-8 text-right">{stat.accuracy}%</span>
-                                    </div>
+                        {analysisData?.best.length > 0 ? analysisData.best.map(stat => (
+                            <div key={stat.name} className="flex justify-between items-center">
+                                <span className="text-xs text-gray-300 truncate max-w-[100px]">{stat.name}</span>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{ width: `${stat.accuracy}%` }} /></div>
+                                    <span className="text-xs font-bold text-blue-400 w-8 text-right">{stat.accuracy}%</span>
                                 </div>
-                            ))
-                        ) : (
-                            <p className="text-xs text-gray-500 text-center py-2">データ不足です</p>
-                        )}
+                            </div>
+                        )) : <p className="text-xs text-gray-500 text-center py-2">データ不足です</p>}
                     </div>
                 </div>
             </div>
 
-            {/* ウィークリーレポート */}
             <section className="card glass-card p-6 mb-8 border border-gray-700/30">
                 <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                        <CalendarDays size={18} className="text-blue-400" />
-                        週間学習量
-                    </h3>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2"><CalendarDays size={18} className="text-blue-400" />週間学習量</h3>
                     <span className="text-[10px] text-gray-500 bg-gray-800 px-2 py-1 rounded">過去7日間の解答数</span>
                 </div>
                 <div className="w-full h-48 mt-4">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={weeklyData}>
                             <XAxis dataKey="day" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                            <Tooltip 
-                                cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                                formatter={(value) => [`${value} 問`, '解答数']}
-                                contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', fontSize: '12px', borderRadius: '8px', color: '#fff' }}
-                            />
+                            <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} formatter={(value) => [`${value} 問`, '解答数']} contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', fontSize: '12px', borderRadius: '8px', color: '#fff' }} />
                             <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                                {weeklyData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.count > 0 ? '#3b82f6' : '#334155'} />
-                                ))}
+                                {weeklyData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.count > 0 ? '#3b82f6' : '#334155'} />)}
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
             </section>
 
-            {/* 分野別学習ガイド */}
             <section className="mb-8">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <BookOpen size={20} className="text-gray-400" />
-                    分野別学習ガイド
-                </h3>
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><BookOpen size={20} className="text-gray-400" />分野別学習ガイド</h3>
                 <div className="grid gap-3">
                     {CATEGORY_NAMES.map(cat => (
                         <div key={cat} className={`card p-4 rounded-xl border border-l-4 ${CATEGORY_CONFIG[cat].border.replace('/30', '/50')} bg-gray-800/40`} style={{ borderLeftColor: 'currentColor' }}>
                             <h4 className={`text-sm font-bold mb-1 ${CATEGORY_CONFIG[cat].color}`}>{cat}</h4>
-                            <p className="text-xs text-gray-400 leading-relaxed">
-                                {CATEGORY_CONFIG[cat].description}
-                            </p>
+                            <p className="text-xs text-gray-400 leading-relaxed">{CATEGORY_CONFIG[cat].description}</p>
                         </div>
                     ))}
                 </div>

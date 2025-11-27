@@ -1,14 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, BarChart2, History, Settings } from 'lucide-react';
+import { Home, BarChart2, History, Settings, Activity } from 'lucide-react'; // Activity追加
 import { cn } from '../../utils/cn';
 
 const navItems = [
     { icon: Home, label: 'ホーム', path: '/' },
     { icon: BarChart2, label: '分析', path: '/analysis' },
+    { icon: Activity, label: '統計ラボ', path: '/statistics' }, // 追加
     { icon: History, label: '復習', path: '/review' },
 ];
 
+// ... (残りのコードは変更なし) ...
 export default function Sidebar() {
     return (
         <aside className="hidden md:flex w-64 bg-gray-900 text-white h-screen flex-shrink-0 flex-col border-r border-gray-800">

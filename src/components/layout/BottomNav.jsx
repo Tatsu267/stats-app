@@ -1,14 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, BarChart2, History } from 'lucide-react';
+import { Home, BarChart2, History, Activity } from 'lucide-react'; // Activity追加
 
 export default function BottomNav() {
     const navItems = [
         { path: '/', icon: Home, label: 'ホーム' },
         { path: '/analysis', icon: BarChart2, label: '分析' },
+        { path: '/statistics', icon: Activity, label: '統計ラボ' }, // 追加
         { path: '/review', icon: History, label: '復習' },
     ];
 
+    // ... (残りのコードは変更なし) ...
     return (
         <nav
             className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0F172A]/90 backdrop-blur-xl border-t border-white/10"
@@ -29,11 +31,11 @@ export default function BottomNav() {
                         {({ isActive }) => (
                             <>
                                 <item.icon
-                                    size={22}
+                                    size={20} // 少し小さくして4つ収まりよく
                                     strokeWidth={isActive ? 2.5 : 2}
                                     className={`transition-all duration-200 ${isActive ? 'scale-110' : ''}`}
                                 />
-                                <span className="text-[10px] font-medium leading-tight">
+                                <span className="text-[9px] font-medium leading-tight">
                                     {item.label}
                                 </span>
                             </>
