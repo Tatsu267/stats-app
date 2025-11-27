@@ -1,13 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, History, Settings } from 'lucide-react';
+import { Home, BarChart2, History, Settings } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: BookOpen, label: 'Quiz', path: '/quiz' },
-    { icon: History, label: 'Review', path: '/review' },
-    { icon: Settings, label: 'Settings', path: '/settings' },
+    { icon: Home, label: 'ホーム', path: '/' },
+    { icon: BarChart2, label: '分析', path: '/analysis' },
+    { icon: History, label: '復習', path: '/review' },
 ];
 
 export default function Sidebar() {
@@ -41,9 +40,20 @@ export default function Sidebar() {
             </nav>
 
             <div className="p-4 border-t border-gray-800">
-                <div className="text-xs text-gray-500 text-center">
-                    &copy; 2025 StatsGrade1
-                </div>
+                <NavLink
+                    to="/settings"
+                    className={({ isActive }) =>
+                        cn(
+                            "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors min-h-[48px]",
+                            isActive
+                                ? "bg-blue-600/20 text-blue-400"
+                                : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                        )
+                    }
+                >
+                    <Settings size={20} />
+                    <span className="font-medium">設定</span>
+                </NavLink>
             </div>
         </aside>
     );

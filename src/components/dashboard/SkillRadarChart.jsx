@@ -8,42 +8,47 @@ import {
     ResponsiveContainer,
     Tooltip
 } from 'recharts';
+import { CATEGORY_NAMES } from '../../utils/categories';
 
 export default function SkillRadarChart({ data }) {
-    // Default data if none provided
-    const chartData = data || [
-        { subject: '確率分布', A: 60, fullMark: 100 },
-        { subject: '推測統計', A: 50, fullMark: 100 },
-        { subject: '多変量解析', A: 40, fullMark: 100 },
-        { subject: '実験計画法', A: 30, fullMark: 100 },
-        { subject: 'ノンパラ', A: 40, fullMark: 100 },
-        { subject: 'その他', A: 50, fullMark: 100 },
-    ];
+    // データがない場合はデフォルト値を生成（全分野0点）
+    const chartData = data || CATEGORY_NAMES.map(cat => ({
+        subject: cat,
+        A: 0,
+        fullMark: 100
+    }));
 
     return (
-        <div className="flex flex-col w-full">
-            <h2 className="text-lg font-semibold text-gray-400 mb-4">分野別スキル分析</h2>
-            <div className="w-full h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
-                        <PolarGrid stroke="#374151" />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                        <Radar
-                            name="My Skill"
-                            dataKey="A"
-                            stroke="#8884d8"
-                            strokeWidth={2}
-                            fill="#8884d8"
-                            fillOpacity={0.5}
-                        />
-                        <Tooltip
-                            contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' }}
-                            itemStyle={{ color: '#8884d8' }}
-                        />
-                    </RadarChart>
-                </ResponsiveContainer>
-            </div>
+        <div className="w-full h-full">
+            <ResponsiveContainer width="100%" height="100%">
+                {/* 7分野に合わせて outerRadius を微調整 (60% -> 65% 程度でも入る可能性がありますが安全策で60%) */}
+                <RadarChart cx="50%" cy="50%" outerRadius="60%" data={chartData}>
+                    <PolarGrid stroke="#374151" />
+                    <PolarAngleAxis 
+                        dataKey="subject" 
+                        tick={{ fill: '#9CA3AF', fontSize: 10, fontWeight: 500 }} 
+                    />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                    <Radar
+                        name="My Skill"
+                        dataKey="A"
+                        stroke="#8B5CF6"
+                        strokeWidth={2}
+                        fill="#8B5CF6"
+                        fillOpacity={0.4}
+                    />
+                    <Tooltip
+                        contentStyle={{ 
+                            backgroundColor: '#1F2937', 
+                            borderColor: '#374151', 
+                            color: '#F3F4F6',
+                            borderRadius: '8px',
+                            fontSize: '12px'
+                        }}
+                        itemStyle={{ color: '#A78BFA' }}
+                    />
+                </RadarChart>
+            </ResponsiveContainer>
         </div>
     );
 }
