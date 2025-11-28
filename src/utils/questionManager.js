@@ -1,8 +1,10 @@
 import questionsData from '../data/questions.json';
 import { db } from '../services/db';
 
-// AI生成問題のIDにつけるプレフィックス（重複防止用）
+// AI生成問題のIDプレフィックス
 export const CUSTOM_PREFIX = 'custom-';
+// 固定問題のIDプレフィックス（新規追加）
+export const FIXED_PREFIX = 'fixed-';
 
 /**
  * 固定問題とAI生成問題を統合して全問題リストを取得する
@@ -10,46 +12,52 @@ export const CUSTOM_PREFIX = 'custom-';
 export async function getAllQuestions() {
     const customQuestions = await db.customQuestions.toArray();
     
-    // AI問題のIDを一意にするためにプレフィックスを付与して整形
-    const formattedCustomQuestions = customQuestions.map(q => ({
+    // 固定問題にIDがない場合や重複を防ぐため、プレフィックス付きIDを強制割り当て
+    const formattedFixedQuestions = questionsData.map((q, index) => ({
         ...q,
-        id: `${CUSTOM_PREFIX}${q.id}`, // 例: 1 -> "custom-1"
-        isCustom: true // 識別用フラグ
+        // もしJSONにidがあればそれを使うが、文字列化してプレフィックスをつける
+        // idがなければインデックスを使う
+        id: q.id ? `${q.id}` : `${FIXED_PREFIX}${index}`,
+        isCustom: false
     }));
 
-    // 固定問題と結合して返す
-    return [...questionsData, ...formattedCustomQuestions];
+    // AI問題のIDを整形
+    const formattedCustomQuestions = customQuestions.map(q => ({
+        ...q,
+        id: `${CUSTOM_PREFIX}${q.id}`, 
+        isCustom: true 
+    }));
+
+    return [...formattedFixedQuestions, ...formattedCustomQuestions];
 }
 
 /**
- * 履歴データと問題を紐付けて返すヘルパー関数
- * (Review.jsxやAnalysis.jsxで使用)
+ * 履歴データと問題を紐付けて返す
  */
 export async function getAttemptsWithQuestions() {
     const attempts = await db.attempts.toArray();
-    const customQuestions = await db.customQuestions.toArray();
+    const allQuestions = await getAllQuestions();
     
-    // 高速化のためにMapを作成
-    const fixedMap = new Map(questionsData.map(q => [q.id, q]));
-    // custom-1 形式のIDをキーにする
-    const customMap = new Map(customQuestions.map(q => [`${CUSTOM_PREFIX}${q.id}`, { ...q, isCustom: true }]));
+    // IDをキーにしたMapを作成
+    const questionMap = new Map(allQuestions.map(q => [q.id, q]));
 
-    // 履歴に問題データを結合
+    // 過去の履歴データ（数値IDで保存されている可能性があるもの）との互換性対応
+    // 古い履歴のIDが "1" なら、新しい "1" (または "fixed-0") とマッチさせる必要があるが、
+    // ここではシンプルに「IDが一致するもの」を探す
+    
     const results = attempts.map(attempt => {
-        // まず固定問題から探す
-        let question = fixedMap.get(attempt.questionId);
+        let question = questionMap.get(attempt.questionId);
         
-        // なければAI問題から探す
-        if (!question) {
-            question = customMap.get(attempt.questionId);
+        // フォールバック: もしIDが数値で保存されていて、Mapのキーが文字列の場合の救済
+        if (!question && typeof attempt.questionId === 'number') {
+             question = questionMap.get(`${attempt.questionId}`);
         }
 
         return {
             ...attempt,
-            question // 問題が見つからない場合は undefined になる
+            question
         };
     });
 
-    // 問題データが存在するものだけを返す（削除された問題の履歴などを除外）
     return results.filter(item => item.question);
 }

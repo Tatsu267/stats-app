@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
-    BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell, YAxis
+    BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 import { TrendingUp, Trophy, CalendarDays, Timer, BookOpen, AlertTriangle } from 'lucide-react';
 import { db } from '../services/db';
@@ -23,9 +23,9 @@ export default function Analysis() {
 
         let totalStudyTimeSec = 0;
 
-        // ▼▼▼ 修正箇所: 分割代入をやめ、オブジェクトから直接読み取る ▼▼▼
+        // ▼▼▼ 修正: データ構造に合わせて読み取り方を変更 ▼▼▼
         attemptsWithQ.forEach((attempt) => {
-            const question = attempt.question; // questionはプロパティとして入っている
+            const question = attempt.question;
             if (!question) return;
 
             totalStudyTimeSec += attempt.timeTaken;
@@ -38,7 +38,7 @@ export default function Analysis() {
                 }
             }
         });
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
         const statsArray = Object.values(categoryStats).map(stat => ({
             ...stat,
@@ -62,7 +62,6 @@ export default function Analysis() {
         };
     }, []);
 
-    // ウィークリーレポート
     const weeklyData = React.useMemo(() => {
         if (!attempts) return [];
         const last7Days = [...Array(7)].map((_, i) => {

@@ -1,20 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom'; // 追加
+import { createPortal } from 'react-dom';
 import { Send, User, BrainCircuit, Loader2, Bot, Maximize2, Minimize2 } from 'lucide-react';
 import { getInitialExplanation, sendChatMessage } from '../../services/ai';
 import { cn } from '../../utils/cn';
 import { BlockMath, InlineMath } from 'react-katex';
 
-// リッチテキストレンダラー (変更なし)
+// ... (RichTextRenderer, MarkdownText は変更なし。省略せずそのまま記述してください) ...
+// (長くなるため省略しますが、元のコードのままでOKです)
 const RichTextRenderer = ({ text }) => {
     if (!text) return null;
-    const parts = text.split(/(\$\$[\s\S]*?\$\$)/g);
+    const cleanText = text.replace(/\\\$/g, '$');
+    const parts = cleanText.split(/(\$\$[\s\S]*?\$\$)/g);
     return (
         <div className="text-sm md:text-base space-y-2">
             {parts.map((part, index) => {
                 if (part.startsWith('$$') && part.endsWith('$$')) {
                     const mathContent = part.slice(2, -2).trim();
-                    return <div key={index} className="my-3 overflow-x-auto py-1"><BlockMath math={mathContent} /></div>;
+                    return <div key={index} className="my-3 overflow-x-auto py-1"><BlockMath math={mathContent} settings={{ strict: false }} /></div>;
                 }
                 return <MarkdownText key={index} text={part} />;
             })}
@@ -22,7 +24,6 @@ const RichTextRenderer = ({ text }) => {
     );
 };
 
-// Markdownパーサー (変更なし)
 const MarkdownText = ({ text }) => {
     const lines = text.split('\n');
     let inCodeBlock = false;
@@ -62,7 +63,7 @@ const MarkdownText = ({ text }) => {
         const parseInline = (str) => {
             const segments = str.split(/(\$.*?\$|\*\*.*?\*\*|__.*?__)/g);
             return segments.map((seg, j) => {
-                if (seg.startsWith('$') && seg.endsWith('$')) return <span key={j} className="mx-1"><InlineMath math={seg.slice(1, -1)} /></span>;
+                if (seg.startsWith('$') && seg.endsWith('$')) return <span key={j} className="mx-1"><InlineMath math={seg.slice(1, -1)} settings={{ strict: false }} /></span>;
                 if (seg.startsWith('**') && seg.endsWith('**')) return <strong key={j} className="text-white font-bold bg-white/10 px-1 rounded">{seg.slice(2, -2)}</strong>;
                 if (seg.startsWith('__') && seg.endsWith('__')) return <span key={j} className="text-red-400 font-bold bg-red-900/20 px-1 rounded border border-red-500/20">{seg.slice(2, -2)}</span>;
                 return seg;
@@ -74,7 +75,8 @@ const MarkdownText = ({ text }) => {
     return <>{renderedLines}</>;
 };
 
-export default function ExplanationChat({ question, selectedOption, correctIndex, isCorrect }) {
+// ▼▼▼ onChatUpdate を受け取るように修正 ▼▼▼
+export default function ExplanationChat({ question, selectedOption, correctIndex, isCorrect, onChatUpdate }) {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -82,15 +84,22 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
-        // 少し遅延させることで描画完了後にスクロールさせる
         setTimeout(() => {
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 100);
     };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages, isLoading, isExpanded]);
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage?.role === 'user' || isLoading) {
+            scrollToBottom();
+        }
+        
+        // ▼▼▼ チャット更新時に親へ通知 ▼▼▼
+        if (onChatUpdate && messages.length > 0) {
+            onChatUpdate(messages);
+        }
+    }, [messages, isLoading]);
 
     useEffect(() => {
         let isMounted = true;
@@ -131,16 +140,15 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
         }
     };
 
-    // チャットUIの中身（共通部分）
+    // ... (ChatContent の JSX は変更なし) ...
     const ChatContent = (
         <div className={cn(
-            "flex flex-col bg-gray-900/95 backdrop-blur-xl border border-gray-700 overflow-hidden shadow-2xl transition-all duration-300 ease-in-out",
+            "flex flex-col bg-[#0F172A] border border-gray-700 overflow-hidden shadow-2xl transition-all duration-300 ease-in-out",
             isExpanded 
-                ? "fixed inset-0 z-[9999] w-screen h-[100dvh] rounded-none" // Portal時は画面全体を強制
-                : "relative w-full rounded-2xl min-h-[500px]" // 通常時は親コンテナに従う
+                ? "fixed inset-0 z-[9999] w-screen h-[100dvh] rounded-none"
+                : "relative w-full h-[500px] rounded-2xl"
         )}>
-            {/* ヘッダー */}
-            <div className="p-3 border-b border-gray-700 bg-gray-800/95 flex items-center justify-between shrink-0 safe-top">
+            <div className="flex-none p-3 border-b border-gray-700 bg-gray-800/95 flex items-center justify-between z-10">
                 <div className="flex items-center gap-2">
                     <div className="p-1.5 bg-blue-500/20 rounded-lg">
                         <BrainCircuit className="text-blue-400" size={18} />
@@ -159,8 +167,7 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
                 </div>
             </div>
 
-            {/* チャットエリア */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth bg-gradient-to-b from-gray-900/50 to-gray-900/80">
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth bg-gradient-to-b from-gray-900 to-gray-900/80">
                 {messages.map((msg, idx) => (
                     <div 
                         key={idx} 
@@ -210,9 +217,8 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
                 <div ref={messagesEndRef} className="h-2" />
             </div>
 
-            {/* 入力エリア */}
-            <form onSubmit={handleSend} className="p-3 border-t border-gray-700 bg-gray-800/90 backdrop-blur-md shrink-0 safe-bottom">
-                <div className="flex gap-2 items-end">
+            <div className="flex-none p-3 border-t border-gray-700 bg-gray-800/95 z-10 pb-safe">
+                <form onSubmit={handleSend} className="flex gap-2 items-end">
                     <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
@@ -235,16 +241,14 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
                     >
                         <Send size={20} />
                     </button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     );
 
-    // 拡大時は Portal を使って body 直下に描画
     if (isExpanded) {
         return createPortal(ChatContent, document.body);
     }
 
-    // 通常時はそのまま描画
     return ChatContent;
 }

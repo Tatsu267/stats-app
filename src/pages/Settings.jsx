@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Save, Key, AlertCircle, Target, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Save, Key, AlertCircle, Target, ArrowLeft, Download, Upload, Trash2, FileJson } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { saveApiKey, getApiKey, saveTargetScore, getTargetScore } from '../services/db';
+import { saveApiKey, getApiKey, saveTargetScore, getTargetScore, exportAllData, importData, resetAllData } from '../services/db';
 
 export default function Settings() {
     const navigate = useNavigate();
     const [apiKey, setApiKey] = useState('');
     const [targetScore, setTargetScore] = useState(80);
     const [saved, setSaved] = useState(false);
+    
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -25,6 +27,68 @@ export default function Settings() {
         await saveTargetScore(targetScore);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
+    };
+
+    // バックアップ
+    const handleExport = async () => {
+        try {
+            const data = await exportAllData();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `stats-grade1-backup-${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert('バックアップファイルを保存しました。');
+        } catch (e) {
+            console.error(e);
+            alert('エクスポートに失敗しました。');
+        }
+    };
+
+    // 復元
+    const handleImportClick = () => {
+        fileInputRef.current.click();
+    };
+
+    const handleFileChange = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!window.confirm('警告：現在のデータはすべて上書きされ、復元できなくなります。\nバックアップファイルからデータを復元してもよろしいですか？')) {
+            event.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const json = JSON.parse(e.target.result);
+                await importData(json);
+                alert('データの復元が完了しました。アプリを再読み込みします。');
+                window.location.reload();
+            } catch (err) {
+                console.error(err);
+                alert('インポートに失敗しました。正しいバックアップファイルを選択してください。');
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    };
+
+    // 初期化処理（メッセージ修正）
+    const handleReset = async () => {
+        // ▼▼▼ メッセージ変更 ▼▼▼
+        if (window.confirm('【危険】学習データを初期化しますか？\nこの操作は取り消せません。\n\n※学習履歴、スコア、AI生成問題は削除されますが、\nAPIキーの設定は保持されます。')) {
+            if (window.confirm('本当に削除してよろしいですか？')) {
+                await resetAllData();
+                alert('データを初期化しました。アプリを再読み込みします。');
+                window.location.reload();
+            }
+        }
     };
 
     return (
@@ -52,7 +116,6 @@ export default function Settings() {
                             <span className="text-white font-bold text-lg">{targetScore}点</span>
                         </div>
                         
-                        {/* スライダーの修正：標準スタイルを使用しaccent-colorで色付け */}
                         <input
                             type="range"
                             min="40"
@@ -106,6 +169,50 @@ export default function Settings() {
                     <Save size={20} />
                     {saved ? '設定を保存しました' : '設定を保存する'}
                 </button>
+
+                {/* データ管理セクション */}
+                <div className="card glass-card p-6 border border-gray-700/50 mt-8">
+                    <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <FileJson className="text-purple-400" size={20} />
+                        データ管理
+                    </h2>
+                    <p className="text-sm text-gray-400 mb-6">
+                        学習履歴やAI生成問題をバックアップ（保存）したり、他の端末に移行したりできます。
+                    </p>
+
+                    <div className="space-y-3">
+                        <button
+                            onClick={handleExport}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white rounded-xl font-bold transition-all active:scale-95"
+                        >
+                            <Download size={18} />
+                            バックアップを保存
+                        </button>
+
+                        <input 
+                            type="file" 
+                            accept=".json" 
+                            ref={fileInputRef} 
+                            onChange={handleFileChange} 
+                            className="hidden" 
+                        />
+                        <button
+                            onClick={handleImportClick}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white rounded-xl font-bold transition-all active:scale-95"
+                        >
+                            <Upload size={18} />
+                            バックアップから復元
+                        </button>
+
+                        <button
+                            onClick={handleReset}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-900/20 hover:bg-red-900/40 border border-red-900/50 text-red-400 hover:text-red-300 rounded-xl font-bold transition-all active:scale-95 mt-6"
+                        >
+                            <Trash2 size={18} />
+                            データを初期化
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );

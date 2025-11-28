@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, XCircle, Clock, Calendar, RotateCw, Dna, ArrowRight } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Calendar, RotateCw, Dna, ArrowRight, AlarmClock } from 'lucide-react';
 import { getAttemptsWithQuestions } from '../utils/questionManager';
 import { cn } from '../utils/cn';
 import { CATEGORY_NAMES } from '../utils/categories';
+import { getDueReviewQuestionIds } from '../services/db';
 
 export default function Review() {
     const navigate = useNavigate();
@@ -14,17 +15,22 @@ export default function Review() {
         const data = await getAttemptsWithQuestions();
         return data.reverse();
     }, []);
+    
+    const dueReviewIds = useLiveQuery(async () => {
+        return await getDueReviewQuestionIds();
+    }, []);
 
     const categories = CATEGORY_NAMES;
 
     if (!attemptsWithData) return <div className="p-8 text-center text-gray-500">Loading history...</div>;
 
     const filteredAttempts = attemptsWithData.filter(item => {
-        // ▼▼▼ 修正箇所: item自体がattemptデータであり、中にquestionがある ▼▼▼
         if (filterCategory === 'All') return true;
+        // ▼▼▼ 修正: item.question でアクセス ▼▼▼
         return item.question && item.question.category === filterCategory;
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     });
+    
+    const dueCount = dueReviewIds?.length || 0;
 
     return (
         <div className="pb-28 px-4 pt-6 max-w-3xl mx-auto animate-fade-in">
@@ -32,6 +38,38 @@ export default function Review() {
                 <h1 className="text-3xl font-bold text-white mb-2">Review</h1>
                 <p className="text-gray-400 text-sm">学習履歴と復習</p>
             </header>
+            
+            <div className="mb-8">
+                 <button 
+                    onClick={() => dueCount > 0 ? navigate('/quiz', { state: { mode: 'srs_review', start: true } }) : null}
+                    disabled={dueCount === 0}
+                    className={cn(
+                        "w-full card p-6 text-left group transition-all relative overflow-hidden tap-target border-2",
+                        dueCount > 0 
+                            ? "bg-gradient-to-br from-green-600/20 to-emerald-900/20 border-green-500/50 shadow-lg shadow-green-900/20 hover:border-green-400"
+                            : "bg-gray-800/40 border-gray-700/50 opacity-80"
+                    )}
+                >
+                    <div className="relative z-10 flex items-center justify-between">
+                        <div>
+                            <div className={cn("flex items-center gap-2 mb-1 text-sm font-bold uppercase tracking-wider", dueCount > 0 ? "text-green-400" : "text-gray-500")}>
+                                <AlarmClock size={18} />
+                                Smart Review
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-1">
+                                {dueCount > 0 ? "今日復習すべき問題" : "復習完了！"}
+                            </h3>
+                            <p className="text-xs text-gray-400 leading-relaxed">
+                                {dueCount > 0 ? `忘却曲線に基づき、${dueCount}問がピックアップされました。` : "今のところ、今日やるべき復習はありません。"}
+                            </p>
+                        </div>
+                        <div className={cn("text-4xl font-black", dueCount > 0 ? "text-white" : "text-gray-600")}>
+                            {dueCount}
+                        </div>
+                    </div>
+                    {dueCount > 0 && <div className="absolute -right-6 -bottom-10 w-32 h-32 bg-green-500/10 rounded-full blur-2xl group-hover:scale-110 transition-transform duration-700" />}
+                </button>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                 <button onClick={() => navigate('/quiz', { state: { mode: 'weakness', start: true } })} className="card glass-card p-6 text-left group transition-all hover:bg-red-500/10 hover:border-red-500/30 relative overflow-hidden tap-target">
@@ -40,7 +78,6 @@ export default function Review() {
                         <h3 className="text-lg font-bold text-white mb-1">弱点克服</h3>
                         <p className="text-xs text-gray-400 leading-relaxed">間違えた問題を優先的に復習します。</p>
                     </div>
-                    <div className="absolute right-[-20px] top-[-20px] w-24 h-24 bg-red-500/5 rounded-full blur-xl group-hover:bg-red-500/10 transition-colors" />
                 </button>
                 <button onClick={() => navigate('/quiz', { state: { mode: 'review', start: true } })} className="card glass-card p-6 text-left group transition-all hover:bg-blue-500/10 hover:border-blue-500/30 relative overflow-hidden tap-target">
                     <div className="relative z-10">
@@ -48,7 +85,6 @@ export default function Review() {
                         <h3 className="text-lg font-bold text-white mb-1">徹底復習</h3>
                         <p className="text-xs text-gray-400 leading-relaxed">過去に解いた問題を再度演習します。</p>
                     </div>
-                     <div className="absolute right-[-20px] top-[-20px] w-24 h-24 bg-blue-500/5 rounded-full blur-xl group-hover:bg-blue-500/10 transition-colors" />
                 </button>
             </div>
 
@@ -66,10 +102,10 @@ export default function Review() {
                         <div className="mt-4"><button onClick={() => navigate('/quiz')} className="text-blue-400 text-sm font-bold flex items-center justify-center gap-1">クイズへ移動 <ArrowRight size={14} /></button></div>
                     </div>
                 ) : (
-                    filteredAttempts.map((attempt) => {
-                        // ▼▼▼ 修正: データ構造に合わせて取り出す ▼▼▼
-                        const question = attempt.question; 
-                        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+                    filteredAttempts.map((item) => {
+                        // ▼▼▼ 修正: item自体がattemptデータ ▼▼▼
+                        const attempt = item;
+                        const question = attempt.question;
                         
                         if (!question) return null;
 

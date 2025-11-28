@@ -3,8 +3,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import Analysis from './pages/Analysis';
-import Statistics from './pages/Statistics'; // 追加
+import Statistics from './pages/Statistics';
 import Quiz from './pages/Quiz';
+import Result from './pages/Result'; // 追加
 import Review from './pages/Review';
 import Settings from './pages/Settings';
 
@@ -15,8 +16,9 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="analysis" element={<Analysis />} />
-          <Route path="statistics" element={<Statistics />} /> {/* 追加 */}
+          <Route path="statistics" element={<Statistics />} />
           <Route path="quiz" element={<Quiz />} />
+          <Route path="result" element={<Result />} /> {/* 追加 */}
           <Route path="review" element={<Review />} />
           <Route path="settings" element={<Settings />} />
         </Route>
