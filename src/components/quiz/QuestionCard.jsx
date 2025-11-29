@@ -4,39 +4,30 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { cn } from '../../utils/cn';
-import { CheckCircle2, XCircle, Sparkles } from 'lucide-react';
-import 'katex/dist/katex.min.css'; // 数式用スタイルの読み込み
+import { CheckCircle2, XCircle } from 'lucide-react';
+import 'katex/dist/katex.min.css'; 
 
 export default function QuestionCard({ question, selectedOption, onSelectOption, isAnswered, correctIndex }) {
-    // ガード処理
     if (!question) {
         return <div className="p-8 text-center text-gray-500">問題を読み込み中...</div>;
     }
 
-    // Markdownのスタイル定義（表や数式の見た目を整える）
     const markdownComponents = {
-        // 数式ブロック ($$) は中央揃えで大きく
         p: ({node, children}) => {
-            // 子供に数式が含まれるかチェックするのは難しいので、汎用的なPタグスタイル
             return <p className="mb-4 leading-relaxed text-gray-100">{children}</p>;
         },
-        // 強調（太字）のデザイン：蛍光ペン風は維持しつつ、少し落ち着かせる
         strong: ({node, ...props}) => (
             <strong className="font-bold text-amber-200/90 border-b border-amber-500/30 pb-0.5 mx-1" {...props} />
         ),
-        // リスト（ul）のデザイン：階層構造を「線」で表現
         ul: ({node, ...props}) => (
             <ul className="my-4 pl-4 border-l-2 border-gray-700 space-y-2" {...props} />
         ),
-        // リスト項目（li）のデザイン：箱を廃止し、テキスト主体に
         li: ({node, children, ...props}) => (
             <li className="pl-4 py-1 text-sm md:text-base leading-relaxed relative" {...props}>
-                {/* 箇条書きのドットを自作（視認性向上） */}
                 <span className="absolute left-0 top-2.5 w-1.5 h-1.5 rounded-full bg-blue-500/50"></span>
                 <div className="text-gray-200">{children}</div>
             </li>
         ),
-        // 表のデザイン
         table: ({node, ...props}) => (
             <div className="overflow-x-auto my-6 rounded border border-gray-700">
                 <table className="w-full text-left border-collapse text-sm" {...props} />
@@ -51,17 +42,9 @@ export default function QuestionCard({ question, selectedOption, onSelectOption,
 
     return (
         <div className="w-full max-w-3xl mx-auto">
-            {/* AI生成タグ */}
-            {question.isCustom && (
-                <div className="mb-6 animate-fade-in">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-400 border border-amber-500/20 shadow-sm">
-                        <Sparkles size={12} />
-                        AI生成問題
-                    </span>
-                </div>
-            )}
+            {/* AI生成タグ削除済 */}
             
-            {/* 問題文 (ReactMarkdownでリッチに表示) */}
+            {/* 問題文 */}
             <div className="mb-8 px-1">
                 <div className="text-lg md:text-xl leading-8 font-medium text-gray-100 tracking-wide">
                     <ReactMarkdown
@@ -131,7 +114,6 @@ export default function QuestionCard({ question, selectedOption, onSelectOption,
                                     )}
                                 </div>
                                 <div className={cn("text-base flex-1", textColor)}>
-                                    {/* 選択肢内でも数式を使えるようにMarkdownで描画 */}
                                     <ReactMarkdown
                                         remarkPlugins={[remarkMath]}
                                         rehypePlugins={[rehypeKatex]}

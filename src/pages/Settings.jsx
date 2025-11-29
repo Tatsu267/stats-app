@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Key, AlertCircle, Target, ArrowLeft, Download, Upload, Trash2, FileJson } from 'lucide-react';
+import { Save, Key, AlertCircle, Target, ArrowLeft, Download, Upload, Trash2, FileJson, Ban, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { saveApiKey, getApiKey, saveTargetScore, getTargetScore, exportAllData, importData, resetAllData } from '../services/db';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { 
+    saveApiKey, getApiKey, saveTargetScore, getTargetScore, 
+    exportAllData, importData, resetAllData,
+    getBlockedSubcategories, removeBlockedSubcategory 
+} from '../services/db';
 
 export default function Settings() {
     const navigate = useNavigate();
@@ -10,6 +15,11 @@ export default function Settings() {
     const [saved, setSaved] = useState(false);
     
     const fileInputRef = useRef(null);
+
+    // 除外リストをリアルタイム監視
+    const blockedList = useLiveQuery(async () => {
+        return await getBlockedSubcategories();
+    }, []);
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -27,6 +37,12 @@ export default function Settings() {
         await saveTargetScore(targetScore);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
+    };
+
+    const handleRemoveBlock = async (topic) => {
+        if (window.confirm(`「${topic}」の除外設定を解除しますか？\nこれにより、再び出題されるようになります。`)) {
+            await removeBlockedSubcategory(topic);
+        }
     };
 
     // バックアップ
@@ -79,9 +95,8 @@ export default function Settings() {
         event.target.value = '';
     };
 
-    // 初期化処理（メッセージ修正）
+    // 初期化処理
     const handleReset = async () => {
-        // ▼▼▼ メッセージ変更 ▼▼▼
         if (window.confirm('【危険】学習データを初期化しますか？\nこの操作は取り消せません。\n\n※学習履歴、スコア、AI生成問題は削除されますが、\nAPIキーの設定は保持されます。')) {
             if (window.confirm('本当に削除してよろしいですか？')) {
                 await resetAllData();
@@ -132,6 +147,37 @@ export default function Settings() {
                             <span>100 (Max)</span>
                         </div>
                     </div>
+                </div>
+
+                {/* 出題除外リスト (New Section) */}
+                <div className="card glass-card p-6 border border-red-500/20">
+                    <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                        <Ban className="text-red-400" size={20} />
+                        出題除外リスト
+                    </h2>
+                    <p className="text-sm text-gray-400 mb-4">
+                        以下の分野はAI出題の範囲から除外されています。
+                    </p>
+
+                    {blockedList && blockedList.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                            {blockedList.map(topic => (
+                                <div key={topic} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-200 text-sm">
+                                    <span>{topic}</span>
+                                    <button 
+                                        onClick={() => handleRemoveBlock(topic)}
+                                        className="hover:bg-red-500/20 rounded-full p-0.5 transition-colors"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-sm text-gray-500 text-center py-4 bg-gray-800/30 rounded-xl border border-dashed border-gray-700">
+                            除外されている分野はありません。
+                        </div>
+                    )}
                 </div>
 
                 {/* API設定 */}

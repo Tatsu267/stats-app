@@ -4,19 +4,24 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { 
     ArrowRight, CheckCircle, XCircle, Loader2, Sparkles, ArrowLeft, 
     AlertTriangle, Tag, AlertCircle, StopCircle, ThumbsUp, HelpCircle, 
-    AlertOctagon, Trophy, Swords, TrendingDown 
+    AlertOctagon, Trophy, Swords, TrendingDown, Ban
 } from 'lucide-react';
 import questionsData from '../data/questions.json';
 import QuestionCard from '../components/quiz/QuestionCard';
 import ExplanationChat from '../components/quiz/ExplanationChat';
 import Timer from '../components/quiz/Timer';
 import { calculateNewScore } from '../utils/scoring';
-import { db, addScore, addAttempt, getLatestScore, addCustomQuestion, getLearningState, updateLearningState, getDueReviewQuestionIds, getUserLevel, getUserExp, saveUserLevel, saveUserExp } from '../services/db';
+import { 
+    db, addScore, addAttempt, getLatestScore, addCustomQuestion, 
+    getLearningState, updateLearningState, getDueReviewQuestionIds, 
+    getUserLevel, getUserExp, saveUserLevel, saveUserExp,
+    getBlockedSubcategories, addBlockedSubcategory
+} from '../services/db';
 import { calculateNextReview, SRS_RATINGS } from '../utils/srs';
 import { calculateExpGain, getNextLevelExp, getDifficultyDistribution } from '../utils/leveling';
 import { generateAiQuestion, generateRolePlayQuestion } from '../services/ai';
 import { cn } from '../utils/cn';
-import { CATEGORY_NAMES, CATEGORY_CONFIG } from '../utils/categories';
+import { CATEGORY_NAMES, CATEGORY_CONFIG, IMPORTANT_TOPICS, getCategoryByTopic } from '../utils/categories';
 import { getAllQuestions, CUSTOM_PREFIX } from '../utils/questionManager';
 import { ROLES, ROLE_IDS } from '../utils/roles';
 
@@ -46,6 +51,7 @@ export default function Quiz() {
   const [levelDownData, setLevelDownData] = useState(null); 
 
   const [showQuitModal, setShowQuitModal] = useState(false);
+  const [blockedSubcategories, setBlockedSubcategories] = useState([]);
 
   const [sessionData, setSessionData] = useState([]);
   const currentChatLog = useRef([]);
@@ -61,6 +67,15 @@ export default function Quiz() {
         window.scrollTo({ top: 0, behavior: 'instant' });
     }
   }, [location.pathname]); 
+  
+  // 除外リストのロード
+  useEffect(() => {
+      const loadBlocked = async () => {
+          const blocked = await getBlockedSubcategories();
+          setBlockedSubcategories(blocked);
+      };
+      loadBlocked();
+  }, []);
 
   useEffect(() => {
     getLatestScore().then(score => setCurrentScore(score));
@@ -88,6 +103,10 @@ export default function Quiz() {
       try {
           let targetDifficulty = 'Medium';
           let targetCategory = categoryOrRole;
+          let specificTopic = null;
+          let isImportant = false;
+          
+          const currentBlocked = await getBlockedSubcategories();
 
           if (currentMode === 'ai_rank_match') {
               const userLevel = await getUserLevel();
@@ -98,9 +117,18 @@ export default function Quiz() {
               else if (rand < dist.Easy + dist.Medium) targetDifficulty = 'Medium';
               else targetDifficulty = 'Hard';
 
-              targetCategory = CATEGORY_NAMES[Math.floor(Math.random() * CATEGORY_NAMES.length)];
+              const availableTopics = IMPORTANT_TOPICS.filter(t => !currentBlocked.includes(t));
               
-              console.log(`[Rank Match] Lv.${userLevel} -> Difficulty: ${targetDifficulty} (E:${dist.Easy}), Category: ${targetCategory}`);
+              if (availableTopics.length > 0 && Math.random() < 0.6) {
+                  specificTopic = availableTopics[Math.floor(Math.random() * availableTopics.length)];
+                  targetCategory = getCategoryByTopic(specificTopic);
+                  isImportant = true;
+                  console.log(`[Rank Match] Important Topic: ${specificTopic} -> Category: ${targetCategory}`);
+              } else {
+                  targetCategory = CATEGORY_NAMES[Math.floor(Math.random() * CATEGORY_NAMES.length)];
+                  console.log(`[Rank Match] Random Category: ${targetCategory}`);
+              }
+
           } else if (currentMode === 'ai_custom') {
               const difficulties = ['Easy', 'Medium', 'Hard'];
               targetDifficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
@@ -111,12 +139,14 @@ export default function Quiz() {
           if (currentMode === 'role_play') {
               newQuestion = await generateRolePlayQuestion(categoryOrRole, targetDifficulty);
           } else {
-              newQuestion = await generateAiQuestion(targetCategory, targetDifficulty);
+              newQuestion = await generateAiQuestion(targetCategory, targetDifficulty, specificTopic, currentBlocked);
           }
           
           const id = await addCustomQuestion(newQuestion);
           newQuestion.id = `${CUSTOM_PREFIX}${id}`;
           newQuestion.isCustom = true;
+          newQuestion.isImportant = isImportant;
+
           return newQuestion;
       } catch (error) {
           console.error(error);
@@ -201,6 +231,18 @@ export default function Quiz() {
   const handleOptionSelect = (index) => { setSelectedOption(index); };
   const handleChatUpdate = (messages) => { currentChatLog.current = messages; };
 
+  const handleBlockTopic = async () => {
+      const question = questions[currentQuestionIndex];
+      if (!question || !question.subcategory) return;
+      
+      const topic = question.subcategory;
+      if (window.confirm(`「${topic}」を今後の出題範囲から除外しますか？\n※設定画面からいつでも解除できます。`)) {
+          await addBlockedSubcategory(topic);
+          setBlockedSubcategories(prev => [...prev, topic]);
+          alert(`「${topic}」を除外しました。`);
+      }
+  };
+
   const handleSubmit = async () => {
     if (selectedOption === null) return;
     const question = questions[currentQuestionIndex];
@@ -217,6 +259,23 @@ export default function Quiz() {
     } else {
         await processResult(SRS_RATINGS.AGAIN);
     }
+  };
+
+  // 「わからない」ボタンの処理
+  const handleGiveUp = async () => {
+      const question = questions[currentQuestionIndex];
+      if (!question) return;
+
+      // selectedOption = -1 (またはnull) で処理
+      setSelectedOption(-1);
+      setIsAnswered(true);
+      
+      // 不正解としてスコア計算
+      const newScore = calculateNewScore(currentScore, false, question.difficulty || 'Medium', timeTaken);
+      setCurrentScore(newScore);
+
+      // 即時復習(AGAIN)として処理
+      await processResult(SRS_RATINGS.AGAIN);
   };
 
   const processResult = async (rating) => {
@@ -273,7 +332,12 @@ export default function Quiz() {
     setSessionData(prev => [...prev, { question, isCorrect, timeTaken, chatLog: [] }]);
     currentChatLog.current = [];
     
-    setWaitingForConfidence(false);
+    // 不正解（ギブアップ含む）の場合は自信度入力待ちにしない
+    if (!isCorrect) {
+        setWaitingForConfidence(false);
+    } else {
+        setWaitingForConfidence(true);
+    }
   };
 
   const saveCurrentChatLog = async () => {
@@ -442,10 +506,9 @@ export default function Quiz() {
                             <Swords size={28} />
                         </div>
                         <div>
-                            {/* ▼▼▼ 修正: flex-wrapを追加し、バッジの折り返しを許可。テキストのフォントサイズ調整。 */}
-                            <h3 className="text-lg sm:text-xl font-bold text-white mb-0.5 flex flex-wrap items-center gap-2">
-                                <span className="whitespace-nowrap">ランクマッチ</span>
-                                <span className="text-[10px] bg-yellow-500 text-black px-2 py-0.5 rounded font-black whitespace-nowrap">XP獲得</span>
+                            <h3 className="text-xl font-bold text-white mb-0.5 flex items-center gap-2">
+                                ランクマッチ
+                                <span className="text-[10px] bg-yellow-500 text-black px-2 py-0.5 rounded font-black">XP獲得</span>
                             </h3>
                             <p className="text-orange-100 text-xs font-medium opacity-90">
                                 レベルに応じた難易度でランダム出題
@@ -594,13 +657,33 @@ export default function Quiz() {
                            <Tag size={10} /> {currentQuestion.subcategory}
                         </span>
                     )}
-                    {currentQuestion.isCustom && <span className="text-[10px] font-bold text-amber-400 border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 rounded">AI生成</span>}
+                    {/* ▼▼▼ 修正: AI生成タグ削除済み（記述なし） ▼▼▼ */}
+                    {currentQuestion.isImportant && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-rose-500/20 to-pink-600/20 text-rose-300 border border-rose-500/30 animate-pulse shadow-sm shadow-rose-500/10">
+                            <TrendingDown size={10} className="rotate-180" />
+                            ★頻出★
+                        </span>
+                    )}
                 </div>
                 
-                <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-3">
-                    Question {currentQuestionIndex + 1}
-                    <span className="text-base font-normal text-gray-500">/ {(mode === 'ai_custom' || mode === 'role_play' || mode === 'ai_rank_match') ? '∞' : questions.length}</span>
-                </h1>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-3">
+                        Question {currentQuestionIndex + 1}
+                        <span className="text-base font-normal text-gray-500">/ {(mode === 'ai_custom' || mode === 'role_play' || mode === 'ai_rank_match') ? '∞' : questions.length}</span>
+                    </h1>
+                    
+                    {(currentQuestion.isCustom && currentQuestion.subcategory) && (
+                         // ▼▼▼ 修正: 除外ボタンのスタイル変更 ▼▼▼
+                         <button 
+                            onClick={handleBlockTopic} 
+                            className="ml-2 flex items-center gap-1.5 px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-full border border-red-500/30 transition-colors text-xs font-bold"
+                            title="この分野を今後出題しない（除外設定）"
+                        >
+                             <Ban size={14} />
+                             この分野を除外
+                         </button>
+                    )}
+                </div>
             </div>
             
             <div className="flex items-center gap-3">
@@ -647,7 +730,22 @@ export default function Quiz() {
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#0F172A]/95 backdrop-blur-xl border-t border-white/10 z-40 md:relative md:bg-transparent md:border-0 md:p-0 md:mt-6 pb-safe">
         <div className="max-w-4xl mx-auto flex justify-end gap-3">
           {!isAnswered ? (
-            <button className={cn("btn w-full md:w-auto px-8 py-3.5 rounded-xl font-bold transition-all active:scale-95 shadow-lg text-base", selectedOption !== null ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25" : "bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700")} onClick={handleSubmit} disabled={selectedOption === null}>回答する</button>
+            <>
+                <button 
+                    className="btn px-5 py-3.5 rounded-xl font-bold bg-gray-800/80 text-gray-400 hover:bg-gray-700 hover:text-white border border-gray-700 transition-all active:scale-95 flex items-center justify-center gap-2" 
+                    onClick={handleGiveUp}
+                >
+                    <HelpCircle size={20} />
+                    <span className="hidden sm:inline text-sm">わからない</span>
+                </button>
+                <button 
+                    className={cn("btn flex-1 md:flex-none px-8 py-3.5 rounded-xl font-bold transition-all active:scale-95 shadow-lg text-base", selectedOption !== null ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25" : "bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700")} 
+                    onClick={handleSubmit} 
+                    disabled={selectedOption === null}
+                >
+                    回答する
+                </button>
+            </>
           ) : waitingForConfidence ? (
             <div className="flex gap-2 w-full md:w-auto">
                 <div className="hidden md:flex items-center text-xs text-gray-400 mr-2 font-bold">自信度は？</div>

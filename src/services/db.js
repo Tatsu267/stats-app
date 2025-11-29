@@ -2,18 +2,18 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('StatsGrade1DB');
 
-// バージョン7: 称号システム用のテーブルを追加
+// バージョン7: 称号システム用のテーブルを追加 (変更なし)
 db.version(7).stores({
     scores: '++id, score, timestamp',
     attempts: '++id, questionId, isCorrect, timeTaken, timestamp, chatLog, confidence',
     settings: 'key, value',
     customQuestions: '++id, text, options, correctIndex, difficulty, category, timestamp',
     learningState: 'questionId, nextReviewDate',
-    userBadges: 'badgeId, unlockedAt' // 追加: 獲得した称号IDと日時
+    userBadges: 'badgeId, unlockedAt'
 });
 
 // --- Scores Helpers ---
-
+// (変更なし)
 export const addScore = async (score) => {
     return await db.scores.add({ score, timestamp: new Date() });
 };
@@ -24,7 +24,7 @@ export const getLatestScore = async () => {
 };
 
 // --- Attempts Helpers ---
-
+// (変更なし)
 export const addAttempt = async (questionId, isCorrect, timeTaken, chatLog = [], confidence = null) => {
     return await db.attempts.add({ 
         questionId, 
@@ -40,7 +40,7 @@ export const getAttempts = async () => {
     return await db.attempts.toArray();
 };
 
-// --- Settings Helpers ---
+// --- Settings Helpers (Modified) ---
 
 export const saveApiKey = async (apiKey) => {
     return await db.settings.put({ key: 'apiKey', value: apiKey });
@@ -60,8 +60,29 @@ export const getTargetScore = async () => {
     return setting ? parseInt(setting.value, 10) : 80;
 };
 
-// --- Leveling Helpers ---
+// ▼▼▼ 追加: 除外サブ分野の管理 ▼▼▼
+export const getBlockedSubcategories = async () => {
+    const setting = await db.settings.get('blockedSubcategories');
+    return setting ? JSON.parse(setting.value) : [];
+};
 
+export const addBlockedSubcategory = async (subcategory) => {
+    const current = await getBlockedSubcategories();
+    if (!current.includes(subcategory)) {
+        const updated = [...current, subcategory];
+        await db.settings.put({ key: 'blockedSubcategories', value: JSON.stringify(updated) });
+    }
+};
+
+export const removeBlockedSubcategory = async (subcategory) => {
+    const current = await getBlockedSubcategories();
+    const updated = current.filter(s => s !== subcategory);
+    await db.settings.put({ key: 'blockedSubcategories', value: JSON.stringify(updated) });
+};
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+// --- Leveling Helpers ---
+// (変更なし)
 export const getUserLevel = async () => {
     const setting = await db.settings.get('userLevel');
     return setting ? parseInt(setting.value, 10) : 1;
@@ -80,8 +101,8 @@ export const saveUserExp = async (exp) => {
     return await db.settings.put({ key: 'userExp', value: exp });
 };
 
-// --- Badge Helpers (New) ---
-
+// --- Badge Helpers ---
+// (変更なし)
 export const unlockBadge = async (badgeId) => {
     const existing = await db.userBadges.get(badgeId);
     if (!existing) {
@@ -96,7 +117,7 @@ export const getUnlockedBadges = async () => {
 };
 
 // --- Custom Question Helpers ---
-
+// (変更なし)
 export const addCustomQuestion = async (question) => {
     const id = await db.customQuestions.add({
         ...question,
@@ -110,7 +131,7 @@ export const getCustomQuestions = async () => {
 };
 
 // --- SRS Helpers ---
-
+// (変更なし)
 export const getLearningState = async (questionId) => {
     return await db.learningState.get(questionId);
 };
@@ -135,14 +156,14 @@ export const getDueReviewQuestionIds = async () => {
 };
 
 // --- Data Management ---
-
+// (変更なし)
 export const exportAllData = async () => {
     const scores = await db.scores.toArray();
     const attempts = await db.attempts.toArray();
     const customQuestions = await db.customQuestions.toArray();
     const settings = await db.settings.toArray();
     const learningState = await db.learningState.toArray();
-    const userBadges = await db.userBadges.toArray(); // 追加
+    const userBadges = await db.userBadges.toArray(); 
 
     return {
         version: 7,

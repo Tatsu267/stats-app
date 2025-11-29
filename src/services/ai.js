@@ -53,7 +53,10 @@ export async function getInitialExplanation(question, selectedOptionIndex, corre
     if (!apiKey) throw new Error("APIキーを設定してください");
 
     const options = Array.isArray(question.options) ? question.options : [];
-    const selectedOption = options[selectedOptionIndex] || "不明";
+    const selectedOption = selectedOptionIndex === -1 
+        ? "回答なし（わからない）" 
+        : (options[selectedOptionIndex] || "不明");
+        
     const correctOption = options[correctOptionIndex] || "不明";
 
     const prompt = `
@@ -106,14 +109,26 @@ export async function sendChatMessage(history, newMessage) {
 }
 
 // 通常のAI問題生成
-export async function generateAiQuestion(category, difficulty = 'Medium') {
+// ▼▼▼ 第4引数 excludedSubcategories を追加 ▼▼▼
+export async function generateAiQuestion(category, difficulty = 'Medium', specificTopic = null, excludedSubcategories = []) {
     const apiKey = await getApiKey();
     if (!apiKey) throw new Error("APIキーが設定されていません。");
 
-    const subcategories = CATEGORY_CONFIG[category]?.subcategories || [];
-    const randomSub = subcategories.length > 0 
-        ? subcategories[Math.floor(Math.random() * subcategories.length)] 
-        : category;
+    let randomSub = category;
+    if (specificTopic) {
+        randomSub = specificTopic;
+    } else {
+        const subcategories = CATEGORY_CONFIG[category]?.subcategories || [];
+        // ▼▼▼ 除外リストに含まれるものをフィルタリング ▼▼▼
+        const availableSubcategories = subcategories.filter(sub => !excludedSubcategories.includes(sub));
+        
+        if (availableSubcategories.length > 0) {
+            randomSub = availableSubcategories[Math.floor(Math.random() * availableSubcategories.length)];
+        } else if (subcategories.length > 0) {
+            // 全て除外されている場合はフォールバックとしてフィルタなしから選ぶ（エラー回避）
+            randomSub = subcategories[Math.floor(Math.random() * subcategories.length)];
+        }
+    }
 
     const prompt = `
     統計検定準1級レベルの「${category}」分野、特に「${randomSub}」に関する、4択または5択の選択式問題を1問作成してください。
@@ -166,7 +181,6 @@ export async function generateAiQuestion(category, difficulty = 'Medium') {
             result = result[0];
         }
 
-        // 文字列としての "\n" を実際の改行コードに置換
         if (result.text) {
             result.text = result.text
                 .replace(/\\n/g, '\n')
@@ -174,7 +188,6 @@ export async function generateAiQuestion(category, difficulty = 'Medium') {
                 .replace(/\\textbf\{(.+?)\}/g, '**$1**'); 
         }
 
-        // 選択肢内のエスケープ文字も置換する
         if (Array.isArray(result.options)) {
             result.options = result.options.map(opt => 
                 opt.replace(/\\n/g, '\n')
@@ -272,7 +285,6 @@ export async function generateRolePlayQuestion(roleId, difficulty = 'Medium') {
             result = result[0];
         }
 
-        // 文字列としての "\n" を実際の改行コードに置換
         if (result.text) {
             result.text = result.text
                 .replace(/\\n/g, '\n')
@@ -280,7 +292,6 @@ export async function generateRolePlayQuestion(roleId, difficulty = 'Medium') {
                 .replace(/\\textbf\{(.+?)\}/g, '**$1**'); 
         }
 
-        // 選択肢内のエスケープ文字も置換する
         if (Array.isArray(result.options)) {
             result.options = result.options.map(opt => 
                 opt.replace(/\\n/g, '\n')
@@ -333,13 +344,11 @@ export async function generateSessionFeedback(sessionData) {
     ※重要箇所は太字(**...**)を使って強調してください（アンダースコア __...__ は使用しないでください）。
     `;
 
-    // ▼▼▼ 修正: AIからのレスポンスを受け取り、Markdownをクリーニングする処理を追加 ▼▼▼
     const text = await callGeminiApi({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.7, maxOutputTokens: 5000 }
     }, apiKey);
 
-    // エスケープされた太字(\*\* -> **) や 誤って使われたアンダースコア(__ -> **) を正規化
     return text
         .replace(/\\\*\\\*/g, '**') 
         .replace(/__(.*?)__/g, '**$1**');
