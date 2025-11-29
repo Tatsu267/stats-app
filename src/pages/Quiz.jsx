@@ -261,20 +261,16 @@ export default function Quiz() {
     }
   };
 
-  // 「わからない」ボタンの処理
   const handleGiveUp = async () => {
       const question = questions[currentQuestionIndex];
       if (!question) return;
 
-      // selectedOption = -1 (またはnull) で処理
       setSelectedOption(-1);
       setIsAnswered(true);
       
-      // 不正解としてスコア計算
       const newScore = calculateNewScore(currentScore, false, question.difficulty || 'Medium', timeTaken);
       setCurrentScore(newScore);
 
-      // 即時復習(AGAIN)として処理
       await processResult(SRS_RATINGS.AGAIN);
   };
 
@@ -332,7 +328,6 @@ export default function Quiz() {
     setSessionData(prev => [...prev, { question, isCorrect, timeTaken, chatLog: [] }]);
     currentChatLog.current = [];
     
-    // 不正解（ギブアップ含む）の場合は自信度入力待ちにしない
     if (!isCorrect) {
         setWaitingForConfidence(false);
     } else {
@@ -594,13 +589,11 @@ export default function Quiz() {
 
         {showQuitModal && (
             <div className="fixed inset-0 z-[100] flex items-start justify-center px-4 pt-24 animate-fade-in">
-                {/* 背景のオーバーレイ */}
                 <div 
                     className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
                     onClick={() => setShowQuitModal(false)}
                 />
                 
-                {/* モーダル本体 */}
                 <div className="card glass-card p-6 w-full max-w-sm relative z-10 border-red-500/30 bg-gray-900/90 shadow-2xl transform transition-all scale-100">
                     <div className="flex flex-col items-center text-center">
                         <div className="p-3 bg-red-500/10 rounded-full mb-4 border border-red-500/20">
@@ -631,60 +624,57 @@ export default function Quiz() {
             </div>
         )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pt-4">
+      <div className="flex flex-col gap-4 pt-4">
+        {/* Header Section - タグとタイマー */}
+        <div className="flex flex-wrap items-center gap-2 mb-1">
+             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider border border-gray-700 px-1.5 py-0.5 rounded">
+                {mode === 'mock' ? 'MOCK' : mode === 'ai_rank_match' ? 'RANK' : mode === 'ai_custom' ? 'PRACTICE' : mode === 'role_play' ? 'ROLE' : 'QUIZ'}
+            </span>
+             {roleInfo && (
+                 <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-1", roleInfo.bg, roleInfo.border, roleInfo.color)}>
+                    <roleInfo.icon size={10} /> {roleInfo.name}
+                 </span>
+             )}
+             {currentQuestion.difficulty && (
+                 <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border", 
+                    currentQuestion.difficulty === 'Easy' ? "text-green-400 border-green-500/30 bg-green-500/10" :
+                    currentQuestion.difficulty === 'Medium' ? "text-yellow-400 border-yellow-500/30 bg-yellow-500/10" :
+                    "text-red-400 border-red-500/30 bg-red-500/10"
+                 )}>
+                    {currentQuestion.difficulty}
+                 </span>
+             )}
+             {currentQuestion.subcategory && (
+                <span className="text-[10px] font-bold text-blue-300 border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                   <Tag size={10} /> {currentQuestion.subcategory}
+                </span>
+            )}
+            {currentQuestion.isImportant && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-rose-500/20 to-pink-600/20 text-rose-300 border border-rose-500/30 animate-pulse shadow-sm shadow-rose-500/10">
+                    <TrendingDown size={10} className="rotate-180" />
+                    ★頻出★
+                </span>
+            )}
+            
+            {/* ▼▼▼ 修正: 除外ボタンをタグ列の右端に配置 ▼▼▼ */}
+            {(currentQuestion.isCustom && currentQuestion.subcategory) && (
+                 <button 
+                    onClick={handleBlockTopic} 
+                    className="ml-auto flex-shrink-0 flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded border border-red-500/30 transition-colors text-[10px] font-bold whitespace-nowrap"
+                    title="この分野を今後出題しない（除外設定）"
+                >
+                     <Ban size={12} />
+                     除外
+                 </button>
+            )}
+        </div>
+        
+        {/* Question Number & Controls */}
         <div className="flex items-center justify-between w-full">
-            <div>
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider border border-gray-700 px-1.5 py-0.5 rounded">
-                        {mode === 'mock' ? 'MOCK' : mode === 'ai_rank_match' ? 'RANK' : mode === 'ai_custom' ? 'PRACTICE' : mode === 'role_play' ? 'ROLE' : 'QUIZ'}
-                    </span>
-                     {roleInfo && (
-                         <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-1", roleInfo.bg, roleInfo.border, roleInfo.color)}>
-                            <roleInfo.icon size={10} /> {roleInfo.name}
-                         </span>
-                     )}
-                     {currentQuestion.difficulty && (
-                         <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border", 
-                            currentQuestion.difficulty === 'Easy' ? "text-green-400 border-green-500/30 bg-green-500/10" :
-                            currentQuestion.difficulty === 'Medium' ? "text-yellow-400 border-yellow-500/30 bg-yellow-500/10" :
-                            "text-red-400 border-red-500/30 bg-red-500/10"
-                         )}>
-                            {currentQuestion.difficulty}
-                         </span>
-                     )}
-                     {currentQuestion.subcategory && (
-                        <span className="text-[10px] font-bold text-blue-300 border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
-                           <Tag size={10} /> {currentQuestion.subcategory}
-                        </span>
-                    )}
-                    {/* ▼▼▼ 修正: AI生成タグ削除済み（記述なし） ▼▼▼ */}
-                    {currentQuestion.isImportant && (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-rose-500/20 to-pink-600/20 text-rose-300 border border-rose-500/30 animate-pulse shadow-sm shadow-rose-500/10">
-                            <TrendingDown size={10} className="rotate-180" />
-                            ★頻出★
-                        </span>
-                    )}
-                </div>
-                
-                <div className="flex items-center gap-2">
-                    <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-3">
-                        Question {currentQuestionIndex + 1}
-                        <span className="text-base font-normal text-gray-500">/ {(mode === 'ai_custom' || mode === 'role_play' || mode === 'ai_rank_match') ? '∞' : questions.length}</span>
-                    </h1>
-                    
-                    {(currentQuestion.isCustom && currentQuestion.subcategory) && (
-                         // ▼▼▼ 修正: 除外ボタンのスタイル変更 ▼▼▼
-                         <button 
-                            onClick={handleBlockTopic} 
-                            className="ml-2 flex items-center gap-1.5 px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-full border border-red-500/30 transition-colors text-xs font-bold"
-                            title="この分野を今後出題しない（除外設定）"
-                        >
-                             <Ban size={14} />
-                             この分野を除外
-                         </button>
-                    )}
-                </div>
-            </div>
+             <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+                Question {currentQuestionIndex + 1}
+                <span className="text-base font-normal text-gray-500">/ {(mode === 'ai_custom' || mode === 'role_play' || mode === 'ai_rank_match') ? '∞' : questions.length}</span>
+            </h1>
             
             <div className="flex items-center gap-3">
                 <Timer isRunning={!isAnswered} onTick={setTimeTaken} />
@@ -731,12 +721,13 @@ export default function Quiz() {
         <div className="max-w-4xl mx-auto flex justify-end gap-3">
           {!isAnswered ? (
             <>
+                {/* ▼▼▼ 修正: hidden sm:inline を削除し、テキストを常に表示 ▼▼▼ */}
                 <button 
-                    className="btn px-5 py-3.5 rounded-xl font-bold bg-gray-800/80 text-gray-400 hover:bg-gray-700 hover:text-white border border-gray-700 transition-all active:scale-95 flex items-center justify-center gap-2" 
+                    className="btn px-5 py-3.5 rounded-xl font-bold bg-gray-800/80 text-gray-400 hover:bg-gray-700 hover:text-white border border-gray-700 transition-all active:scale-95 flex items-center justify-center gap-2 flex-shrink-0" 
                     onClick={handleGiveUp}
                 >
                     <HelpCircle size={20} />
-                    <span className="hidden sm:inline text-sm">わからない</span>
+                    <span className="text-sm">わからない</span>
                 </button>
                 <button 
                     className={cn("btn flex-1 md:flex-none px-8 py-3.5 rounded-xl font-bold transition-all active:scale-95 shadow-lg text-base", selectedOption !== null ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25" : "bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700")} 

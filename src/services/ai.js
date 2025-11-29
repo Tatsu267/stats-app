@@ -59,6 +59,7 @@ export async function getInitialExplanation(question, selectedOptionIndex, corre
         
     const correctOption = options[correctOptionIndex] || "不明";
 
+    // ▼▼▼ 修正: 禁止事項を追加し、コードブロックの使用を抑制 ▼▼▼
     const prompt = `
     あなたは統計検定準1級レベルの専門知識を持つチューターです。
     以下の問題の解説を作成してください。挨拶は不要です。
@@ -71,8 +72,13 @@ export async function getInitialExplanation(question, selectedOptionIndex, corre
     【重要：記述ルール】
     - **構造化**: ポイントや手順を説明する際は、Markdownのリスト形式（"- "）を積極的に使ってください。
     - **強調**: 重要な用語や結論は太字（**...**）にしてください。
-    - **数式**: 数式はLaTeX形式 ($$または$) で記述してください。
-      改行を含む数式は \\begin{aligned} ... \\end{aligned} 環境を使用してください。
+    - **数式（最重要）**: 
+      - 定義式や計算式など、主要な数式は必ず **ディスプレイ数式 ($$...$$)** を使用して、独立した行に表示してください。
+      - 文中のインライン数式 ($...$) は、変数名（例: $x$）や短い式（例: $n=10$）に限定してください。
+      - 改行を含む長い数式は \\begin{aligned} ... \\end{aligned} 環境を使用してください。
+    - **禁止事項**: 
+      - **数式をコードブロック（\`\`\`）やバッククォート（\`）で絶対に囲まないでください。** これらはプログラムコード用であり、数式用ではありません。
+      - 数式は必ずLaTeX形式（$$ または $）で記述してください。
     - **表**: 比較が必要な場合はMarkdownの表形式を使用してください。
     
     【構成案】
@@ -93,9 +99,12 @@ export async function sendChatMessage(history, newMessage) {
     const apiKey = await getApiKey();
     if (!apiKey) throw new Error("APIキーを設定してください");
     
+    // ▼▼▼ 修正: チャットでもコードブロック禁止をリマインド ▼▼▼
     const reminder = `
     (挨拶不要。以下のルールを守ってください)
-    - 数式はLaTeX形式。改行を含む数式は aligned 環境を使う。
+    - 主要な数式はディスプレイ形式 ($$...$$) で独立した行に出力する。
+    - **数式をコードブロック（\`\`\`）で囲まないこと。**
+    - 改行を含む数式は aligned 環境を使う。
     - 箇条書きは見やすいMarkdownリスト形式 ("- ") を使う。
     - 重要な単語は太字 (**...**) にする。
     - 表はMarkdown形式。
@@ -109,7 +118,6 @@ export async function sendChatMessage(history, newMessage) {
 }
 
 // 通常のAI問題生成
-// ▼▼▼ 第4引数 excludedSubcategories を追加 ▼▼▼
 export async function generateAiQuestion(category, difficulty = 'Medium', specificTopic = null, excludedSubcategories = []) {
     const apiKey = await getApiKey();
     if (!apiKey) throw new Error("APIキーが設定されていません。");
@@ -119,13 +127,11 @@ export async function generateAiQuestion(category, difficulty = 'Medium', specif
         randomSub = specificTopic;
     } else {
         const subcategories = CATEGORY_CONFIG[category]?.subcategories || [];
-        // ▼▼▼ 除外リストに含まれるものをフィルタリング ▼▼▼
         const availableSubcategories = subcategories.filter(sub => !excludedSubcategories.includes(sub));
         
         if (availableSubcategories.length > 0) {
             randomSub = availableSubcategories[Math.floor(Math.random() * availableSubcategories.length)];
         } else if (subcategories.length > 0) {
-            // 全て除外されている場合はフォールバックとしてフィルタなしから選ぶ（エラー回避）
             randomSub = subcategories[Math.floor(Math.random() * subcategories.length)];
         }
     }
@@ -138,19 +144,12 @@ export async function generateAiQuestion(category, difficulty = 'Medium', specif
     【重要：記述ルール】
     - **可読性（箇条書き）**: 条件や変数の定義は、Markdownのリスト形式（"- "）を使用し、**過剰な入れ子（ネスト）は避けてください**。
       項目名（「要因A」など）は太字（**...**）で強調してください。
-      悪い例: 
-        - 要因A
-          - 水準1
-          - 水準2
-      良い例: 
-        - **要因A**: 水準1（...）、水準2（...）
-        - **要因B**: 水準1（...）、水準2（...）
-    - **数式**: 変数名（例: X, Y, n, p）、添字付き文字（例: X_1）、数式は**必ず** LaTeX形式 ($...$) で記述してください。
-      悪い例: X_1, beta_0
-      良い例: $X_1$, $\\beta_0$
+    - **数式**: 
+      - 変数名（$X$など）はインライン形式 ($...$)。
+      - 定義式や重要な数式は、可能な限り **ディスプレイ形式 ($$...$$)** を使用して見やすくしてください。
+      - バックスラッシュはJSON用に二重エスケープ (\\\\) してください。
+      - **コードブロック（\`\`\`）は使用禁止です。**
     - **表**: 分布表などが必要な場合は、**Markdownの表形式** ( | x | P(x) | ... ) を使ってください。
-    - **JSONエスケープ**: JSON文字列として出力するため、バックスラッシュ（\\）は必ず二重（\\\\）にエスケープしてください。
-      例: LaTeXの $\\lambda$ -> "$\\\\lambda$", 改行 -> "\\\\n"
     
     【出力フォーマット】
     以下のJSON形式**のみ**を出力してください。Markdownのcode blockは不要です。
@@ -234,26 +233,14 @@ export async function generateRolePlayQuestion(roleId, difficulty = 'Medium') {
     統計検定準1級レベルの知識、特に**「${randomTopic}」**に関連する知識を必要とする、
     **実務的で具体的なシチュエーション**に基づいた4択または5択の問題を1問作成してください。
     
-    ※注意点:
-    - **毎回同じような問題（例: A/Bテストばかりなど）にならないよう、${randomTopic}の観点から多様なシチュエーションを考えてください。**
-    - 「ある工場で...」のような抽象的な表現ではなく、「WebサイトのCVR改善施策において...」や「新薬Aの第3相臨床試験において...」のように具体的にしてください。
-    
     【重要：記述ルール】
     - **可読性（箇条書き）**: 条件、変数定義、仮説などを列挙する場合は、必ずMarkdownのリスト形式（"- "）を使用し、**過剰な入れ子（ネスト）は避けてください**。
-      項目名（「説明変数A」など）は太字（**...**）で強調してください。
-      悪い例: 
-        - 説明変数
-          - $X_1$: 広告費
-          - $X_2$: 訪問数
-      良い例: 
-        - **説明変数 $X_1$**: 広告費
-        - **説明変数 $X_2$**: 訪問数
-    - **数式**: 変数名（例: X, Y）、添字（例: _1, _i）、ギリシャ文字などは**必ず** LaTeX形式 ($...$) で記述してください。
-      悪い例: Y = b_0 + b_1X_1
-      良い例: $Y = \\beta_0 + \\beta_1 X_1$
+    - **数式**: 
+      - 変数名（$X$など）はインライン形式 ($...$)。
+      - 定義式や重要な数式は、可能な限り **ディスプレイ形式 ($$...$$)** を使用して見やすくしてください。
+      - バックスラッシュはJSON用に二重エスケープ (\\\\) してください。
+      - **コードブロック（\`\`\`）は使用禁止です。**
     - **表**: データの提示が必要な場合は、**Markdownの表形式** ( | x | y | ... ) を使ってください。
-    - **JSONエスケープ**: JSON文字列として出力するため、バックスラッシュ（\\）は必ず二重（\\\\）にエスケープしてください。
-      例: $\\mu$ -> "$\\\\mu$", 改行 -> "\\\\n"
     
     【出力フォーマット】
     以下のJSON形式**のみ**を出力してください。Markdownのcode blockは不要です。
