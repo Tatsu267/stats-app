@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
-    PlayCircle, Settings, ArrowRight, Flame, Target, ClipboardList, Sparkles, AlarmClock, Briefcase, Crown, Zap
+    PlayCircle, Settings, ArrowRight, Flame, Target, ClipboardList, Sparkles, AlarmClock, Briefcase, Crown, Zap, Swords
 } from 'lucide-react';
 import { db, getTargetScore, getDueReviewQuestionIds, getUserLevel, getUserExp } from '../services/db';
 import { getNextLevelExp } from '../utils/leveling';
@@ -50,7 +50,8 @@ export default function Dashboard() {
         if (dueCount > 0) {
             navigate('/quiz', { state: { mode: 'srs_review', start: true } });
         } else {
-            navigate('/quiz', { state: { mode: 'random', start: true } });
+            // 実力強化（random）を廃止し、ランクマッチへ統合
+            navigate('/quiz', { state: { mode: 'ai_rank_match', start: true } });
         }
     };
 
@@ -110,25 +111,35 @@ export default function Dashboard() {
             </h2>
 
             <div className="space-y-4">
-                {/* 1. おすすめ演習 */}
+                {/* 1. おすすめ復習 / ランクマッチ */}
                 <button 
                     onClick={handleRecommendedStart}
-                    className={cn("w-full group relative overflow-hidden rounded-3xl p-6 text-left shadow-xl transition-all active:scale-[0.98] tap-target border-2", dueCount > 0 ? "bg-gradient-to-br from-green-600/20 to-emerald-900/20 border-green-500/50 shadow-green-900/20 hover:border-green-400" : "bg-gray-800/40 border-gray-700/50 hover:bg-gray-800/60 hover:border-blue-500/30")}
+                    // ▼▼▼ 修正: paddingを調整 (p-6 -> p-5 sm:p-6)
+                    className={cn("w-full group relative overflow-hidden rounded-3xl p-5 sm:p-6 text-left shadow-xl transition-all active:scale-[0.98] tap-target border-2", dueCount > 0 ? "bg-gradient-to-br from-green-600/20 to-emerald-900/20 border-green-500/50 shadow-green-900/20 hover:border-green-400" : "bg-gray-800/40 border-gray-700/50 hover:bg-gray-800/60 hover:border-blue-500/30")}
                 >
                     <div className="relative z-10 flex items-center justify-between">
-                        <div className="flex items-center gap-5">
-                            <div className={cn("p-4 rounded-2xl backdrop-blur-sm shadow-inner", dueCount > 0 ? "bg-green-500/20 text-green-400" : "bg-blue-500/10 text-blue-400")}><AlarmClock size={32} /></div>
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="text-xl font-bold text-white">{dueCount > 0 ? "おすすめ復習" : "実力強化"}</h3>
-                                    {dueCount > 0 && <span className="text-[10px] font-bold bg-green-500/20 px-2 py-0.5 rounded-full text-green-300 border border-green-500/30 animate-pulse">復習 {dueCount}問</span>}
+                        {/* ▼▼▼ 修正: gapを調整 (gap-5 -> gap-3 sm:gap-5) */}
+                        <div className="flex items-center gap-3 sm:gap-5">
+                            <div className={cn("p-4 rounded-2xl backdrop-blur-sm shadow-inner flex-shrink-0", dueCount > 0 ? "bg-green-500/20 text-green-400" : "bg-yellow-500/10 text-yellow-400")}>
+                                {dueCount > 0 ? <AlarmClock size={32} /> : <Swords size={32} />}
+                            </div>
+                            <div className="min-w-0">
+                                {/* ▼▼▼ 修正: flex-wrapを追加し、バッジの折り返しを許可 */}
+                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                    {/* ▼▼▼ 修正: テキストサイズ調整と改行禁止 (whitespace-nowrap) */}
+                                    <h3 className="text-lg sm:text-xl font-bold text-white whitespace-nowrap">{dueCount > 0 ? "おすすめ復習" : "ランクマッチ"}</h3>
+                                    {dueCount > 0 ? (
+                                        <span className="text-[10px] font-bold bg-green-500/20 px-2 py-0.5 rounded-full text-green-300 border border-green-500/30 animate-pulse whitespace-nowrap">復習 {dueCount}問</span>
+                                    ) : (
+                                        <span className="text-[10px] font-bold bg-yellow-500/20 px-2 py-0.5 rounded-full text-yellow-300 border border-yellow-500/30 whitespace-nowrap">XP獲得</span>
+                                    )}
                                 </div>
-                                <p className={cn("text-sm font-medium", dueCount > 0 ? "text-green-100 opacity-90" : "text-gray-400")}>
-                                    {dueCount > 0 ? "忘却曲線に基づいた復習" : "レベルに合わせて問題を出題"}
+                                <p className={cn("text-sm font-medium truncate", dueCount > 0 ? "text-green-100 opacity-90" : "text-gray-400")}>
+                                    {dueCount > 0 ? "忘却曲線に基づいた復習" : "現在のレベルに応じた実力試し"}
                                 </p>
                             </div>
                         </div>
-                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/10 transition-colors shadow-lg"><ArrowRight className="text-white w-6 h-6" /></div>
+                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/10 transition-colors shadow-lg flex-shrink-0"><ArrowRight className="text-white w-6 h-6" /></div>
                     </div>
                 </button>
 

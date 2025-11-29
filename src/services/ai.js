@@ -117,6 +117,7 @@ export async function generateAiQuestion(category, difficulty = 'Medium') {
 
     const prompt = `
     統計検定準1級レベルの「${category}」分野、特に「${randomSub}」に関する、4択または5択の選択式問題を1問作成してください。
+    **難易度は「${difficulty}」としてください。**
     前回とは違う問題を作ってください。
     
     【重要：記述ルール】
@@ -143,7 +144,7 @@ export async function generateAiQuestion(category, difficulty = 'Medium') {
       "text": "問題文... (Markdownリスト形式や数式を含み、適宜改行を入れる)",
       "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"],
       "correctIndex": 0,
-      "difficulty": "Medium", 
+      "difficulty": "${difficulty}", 
       "category": "${category}",
       "subcategory": "${randomSub}"
     }
@@ -171,6 +172,15 @@ export async function generateAiQuestion(category, difficulty = 'Medium') {
                 .replace(/\\n/g, '\n')
                 .replace(/\\\*\\\*/g, '**')
                 .replace(/\\textbf\{(.+?)\}/g, '**$1**'); 
+        }
+
+        // 選択肢内のエスケープ文字も置換する
+        if (Array.isArray(result.options)) {
+            result.options = result.options.map(opt => 
+                opt.replace(/\\n/g, '\n')
+                   .replace(/\\\*\\\*/g, '**')
+                   .replace(/\\textbf\{(.+?)\}/g, '**$1**')
+            );
         }
 
         if (!result || !result.text || !Array.isArray(result.options) || result.options.length < 2 || typeof result.correctIndex !== 'number') {
@@ -270,6 +280,15 @@ export async function generateRolePlayQuestion(roleId, difficulty = 'Medium') {
                 .replace(/\\textbf\{(.+?)\}/g, '**$1**'); 
         }
 
+        // 選択肢内のエスケープ文字も置換する
+        if (Array.isArray(result.options)) {
+            result.options = result.options.map(opt => 
+                opt.replace(/\\n/g, '\n')
+                   .replace(/\\\*\\\*/g, '**')
+                   .replace(/\\textbf\{(.+?)\}/g, '**$1**')
+            );
+        }
+
         if (!result || !result.text || !Array.isArray(result.options) || result.options.length < 2 || typeof result.correctIndex !== 'number') {
             console.warn("AI generated invalid format:", result);
             throw new Error("AIが不完全なデータを生成しました。再生成します。");
@@ -314,8 +333,14 @@ export async function generateSessionFeedback(sessionData) {
     ※重要箇所は太字(**...**)を使って強調してください（アンダースコア __...__ は使用しないでください）。
     `;
 
-    return callGeminiApi({
+    // ▼▼▼ 修正: AIからのレスポンスを受け取り、Markdownをクリーニングする処理を追加 ▼▼▼
+    const text = await callGeminiApi({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.7, maxOutputTokens: 5000 }
     }, apiKey);
+
+    // エスケープされた太字(\*\* -> **) や 誤って使われたアンダースコア(__ -> **) を正規化
+    return text
+        .replace(/\\\*\\\*/g, '**') 
+        .replace(/__(.*?)__/g, '**$1**');
 }
