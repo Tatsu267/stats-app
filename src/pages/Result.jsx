@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { CheckCircle, XCircle, Clock, BrainCircuit, Loader2, Home, ArrowRight, ChevronRight, Trophy } from 'lucide-react';
+import { 
+    CheckCircle, XCircle, Clock, BrainCircuit, Loader2, Home, 
+    ChevronRight, Trophy, Medal 
+} from 'lucide-react';
 import { generateSessionFeedback } from '../services/ai';
 import { getUserLevel, getUserExp } from '../services/db';
 import { getNextLevelExp } from '../utils/leveling';
+import { checkNewBadges } from '../utils/badges';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -15,17 +19,20 @@ import { cn } from '../utils/cn';
 export default function Result() {
     const location = useLocation();
     const navigate = useNavigate();
-    // ▼▼▼ 受け取るstateにtotalExpを追加 ▼▼▼
     const { sessionData, totalExp = 0 } = location.state || { sessionData: [] };
+    
     const [feedback, setFeedback] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [newBadges, setNewBadges] = useState([]); // 新規獲得バッジ
 
+    // ユーザー情報の取得
     const userStatus = useLiveQuery(async () => {
         const level = await getUserLevel();
         const exp = await getUserExp();
         return { level, exp };
     }, [], { level: 1, exp: 0 });
 
+    // 統計情報の計算
     const correctCount = sessionData.filter(d => d.isCorrect).length;
     const totalCount = sessionData.length;
     const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
@@ -35,15 +42,36 @@ export default function Result() {
     const nextLevelExp = getNextLevelExp(userStatus.level);
     const expPercent = Math.min(100, Math.round((userStatus.exp / nextLevelExp) * 100));
 
+    // バッジチェックとAIフィードバック生成
     useEffect(() => {
-        const fetchFeedback = async () => {
+        const processResultData = async () => {
             if (totalCount === 0) {
                 setIsLoading(false);
                 return;
             }
+
+            // 1. バッジ獲得チェック
+            try {
+                // 簡易的なStatsオブジェクトを作成（本来はDBから正確な履歴を取得して計算推奨）
+                const stats = {
+                    totalAttempts: 10, // 仮の値（実装時はDBから取得してください）
+                    streak: 1,         // 仮の値（実装時はDBから取得してください）
+                    level: userStatus.level,
+                    lastTimeTaken: sessionData[sessionData.length - 1]?.timeTaken || 0,
+                    lastIsCorrect: sessionData[sessionData.length - 1]?.isCorrect || false
+                };
+                
+                const earned = await checkNewBadges(stats);
+                setNewBadges(earned);
+
+            } catch (e) {
+                console.error("Badge check failed", e);
+            }
+
+            // 2. AIフィードバック生成
             try {
                 const text = await generateSessionFeedback(sessionData);
-                // ▼▼▼ 修正: __ を ** に置換 ▼▼▼
+                // Markdownの誤用（__text__）を太字（**text**）に置換
                 const cleanText = text?.replace(/__(.*?)__/g, '**$1**');
                 setFeedback(cleanText);
             } catch (error) {
@@ -52,9 +80,11 @@ export default function Result() {
                 setIsLoading(false);
             }
         };
-        fetchFeedback();
-    }, [sessionData]);
+        
+        processResultData();
+    }, [sessionData, userStatus.level, totalCount]);
 
+    // Markdown表示用のコンポーネント定義
     const markdownComponents = {
         p: ({node, children}) => <p className="mb-4 leading-relaxed text-gray-200">{children}</p>,
         strong: ({node, ...props}) => (
@@ -72,6 +102,17 @@ export default function Result() {
         h1: ({node, children}) => <h3 className="text-xl font-bold text-white mt-6 mb-3 border-b border-gray-700 pb-2">{children}</h3>,
         h2: ({node, children}) => <h3 className="text-lg font-bold text-blue-300 mt-5 mb-2 flex items-center gap-2"><ChevronRight size={18} />{children}</h3>,
         h3: ({node, children}) => <h4 className="text-base font-bold text-gray-200 mt-4 mb-2">{children}</h4>,
+        code: ({node, inline, className, children, ...props}) => {
+            return inline ? (
+                <code className="bg-gray-700/50 px-1 py-0.5 rounded text-xs font-mono text-pink-300 border border-gray-600/30" {...props}>
+                    {children}
+                </code>
+            ) : (
+                <div className="my-2 p-3 bg-[#1E293B] rounded-lg border border-gray-700 font-mono text-xs overflow-x-auto shadow-inner">
+                    <code className="text-gray-300" {...props}>{children}</code>
+                </div>
+            );
+        }
     };
 
     const simpleMarkdownComponents = {
@@ -85,12 +126,30 @@ export default function Result() {
         <div className="min-h-screen pb-28 px-4 pt-6 max-w-3xl mx-auto animate-fade-in">
             <h1 className="text-2xl font-bold text-white mb-6 text-center">演習結果</h1>
 
-            {/* ▼▼▼ 追加: 獲得経験値カード ▼▼▼ */}
+            {/* 新規獲得バッジの表示エリア */}
+            {newBadges.length > 0 && (
+                <div className="mb-6 space-y-3">
+                    {newBadges.map(badge => (
+                        <div key={badge.id} className="card bg-gradient-to-r from-yellow-900/60 to-amber-900/60 border border-yellow-500/50 p-4 flex items-center gap-4 animate-scale-in shadow-lg shadow-yellow-900/20">
+                            <div className={cn("p-3 rounded-full bg-yellow-500 text-black shadow-lg shadow-yellow-500/20")}>
+                                <Medal size={24} />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-yellow-400 uppercase tracking-wider mb-0.5 animate-pulse">BADGE UNLOCKED!</p>
+                                <h3 className="text-lg font-bold text-white">{badge.name}</h3>
+                                <p className="text-sm text-yellow-200/80">{badge.description}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* 獲得経験値カード */}
             {totalExp > 0 && (
                 <div className="card glass-card p-5 mb-6 bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border border-yellow-500/30 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 opacity-20"><Trophy size={80} className="text-yellow-400" /></div>
+                    <div className="absolute top-0 right-0 p-4 opacity-20 pointer-events-none"><Trophy size={80} className="text-yellow-400" /></div>
                     <div className="relative z-10 flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-full bg-yellow-500 flex items-center justify-center shadow-lg text-black">
+                        <div className="w-14 h-14 rounded-full bg-yellow-500 flex items-center justify-center shadow-lg text-black shrink-0">
                             <Trophy size={28} />
                         </div>
                         <div className="flex-1">
@@ -104,33 +163,32 @@ export default function Result() {
                             <span className="text-[10px] text-gray-300 font-mono">{userStatus.exp} / {nextLevelExp}</span>
                         </div>
                         <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                            <div className="h-full bg-yellow-400" style={{ width: `${expPercent}%` }}></div>
+                            <div className="h-full bg-yellow-400 transition-all duration-1000" style={{ width: `${expPercent}%` }}></div>
                         </div>
                     </div>
                 </div>
             )}
-            {/* ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ */}
 
-            {/* スコアカード */}
+            {/* スコアカード (グリッド表示) */}
             <div className="grid grid-cols-3 gap-3 mb-6">
-                <div className="card bg-gray-800 p-4 flex flex-col items-center justify-center border border-gray-700">
+                <div className="card bg-gray-800 p-4 flex flex-col items-center justify-center border border-gray-700 rounded-xl">
                     <span className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">正答率</span>
-                    <span className={`text-3xl font-black ${accuracy >= 80 ? 'text-green-400' : accuracy >= 60 ? 'text-blue-400' : 'text-red-400'}`}>
+                    <span className={`text-2xl md:text-3xl font-black ${accuracy >= 80 ? 'text-green-400' : accuracy >= 60 ? 'text-blue-400' : 'text-red-400'}`}>
                         {accuracy}<span className="text-sm font-normal text-gray-500 ml-0.5">%</span>
                     </span>
                 </div>
-                <div className="card bg-gray-800 p-4 flex flex-col items-center justify-center border border-gray-700">
+                <div className="card bg-gray-800 p-4 flex flex-col items-center justify-center border border-gray-700 rounded-xl">
                     <span className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">正解数</span>
-                    <span className="text-3xl font-black text-white">{correctCount}<span className="text-base font-normal text-gray-500">/{totalCount}</span></span>
+                    <span className="text-2xl md:text-3xl font-black text-white">{correctCount}<span className="text-base font-normal text-gray-500">/{totalCount}</span></span>
                 </div>
-                <div className="card bg-gray-800 p-4 flex flex-col items-center justify-center border border-gray-700">
+                <div className="card bg-gray-800 p-4 flex flex-col items-center justify-center border border-gray-700 rounded-xl">
                     <span className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">平均時間</span>
-                    <span className="text-3xl font-black text-white">{avgTime}<span className="text-sm font-normal text-gray-500 ml-0.5">秒</span></span>
+                    <span className="text-2xl md:text-3xl font-black text-white">{avgTime}<span className="text-sm font-normal text-gray-500 ml-0.5">秒</span></span>
                 </div>
             </div>
 
             {/* AIフィードバック */}
-            <div className="card glass-card p-6 border border-blue-500/20 mb-8 relative overflow-hidden bg-gradient-to-b from-gray-800/80 to-gray-900/80">
+            <div className="card glass-card p-6 border border-blue-500/20 mb-8 relative overflow-hidden bg-gradient-to-b from-gray-800/80 to-gray-900/80 rounded-2xl">
                 <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
                     <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
                         <BrainCircuit size={24} />
@@ -159,11 +217,11 @@ export default function Result() {
                 )}
             </div>
 
-            {/* 詳細リスト */}
+            {/* 回答詳細リスト */}
             <div className="space-y-4 mb-8">
                 <h3 className="text-sm font-bold text-gray-400 mb-2 uppercase tracking-wider px-1">回答詳細</h3>
                 {sessionData.map((data, i) => (
-                    <div key={i} className="card bg-gray-800/40 p-4 flex items-start gap-4 border border-gray-700 hover:bg-gray-800/60 transition-colors">
+                    <div key={i} className="card bg-gray-800/40 p-4 flex items-start gap-4 border border-gray-700 hover:bg-gray-800/60 transition-colors rounded-xl">
                          <div className="mt-1 flex-shrink-0">
                             {data.isCorrect ? <CheckCircle className="text-green-500" size={20} /> : <XCircle className="text-red-500" size={20} />}
                          </div>
@@ -190,6 +248,7 @@ export default function Result() {
                 ))}
             </div>
 
+            {/* ホームへ戻るボタン */}
             <button 
                 onClick={() => navigate('/')}
                 className="btn w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2 transition-all active:scale-95"

@@ -3,15 +3,23 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { 
     BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
-import { TrendingUp, Trophy, CalendarDays, Timer, BookOpen, AlertTriangle } from 'lucide-react';
-import { db } from '../services/db';
+import { TrendingUp, Trophy, CalendarDays, Timer, BookOpen, AlertTriangle, Medal, Lock } from 'lucide-react';
+import { db, getUnlockedBadges } from '../services/db';
 import SkillRadarChart from '../components/dashboard/SkillRadarChart';
 import { CATEGORY_CONFIG, CATEGORY_NAMES } from '../utils/categories';
 import { getAttemptsWithQuestions } from '../utils/questionManager';
+import { BADGES } from '../utils/badges';
+import { cn } from '../utils/cn';
 
 export default function Analysis() {
     const attempts = useLiveQuery(() => db.attempts.toArray(), []);
     
+    // 獲得済みバッジの取得
+    const unlockedBadges = useLiveQuery(async () => {
+        const badges = await getUnlockedBadges();
+        return new Set(badges.map(b => b.badgeId));
+    }, []);
+
     const analysisData = useLiveQuery(async () => {
         const attemptsWithQ = await getAttemptsWithQuestions();
         if (!attemptsWithQ || attemptsWithQ.length === 0) return null;
@@ -23,7 +31,6 @@ export default function Analysis() {
 
         let totalStudyTimeSec = 0;
 
-        // ▼▼▼ 修正: データ構造に合わせて読み取り方を変更 ▼▼▼
         attemptsWithQ.forEach((attempt) => {
             const question = attempt.question;
             if (!question) return;
@@ -38,7 +45,6 @@ export default function Analysis() {
                 }
             }
         });
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
         const statsArray = Object.values(categoryStats).map(stat => ({
             ...stat,
@@ -98,7 +104,7 @@ export default function Analysis() {
     }
 
     return (
-        <div className="min-h-screen pb-28 px-4 pt-6 max-w-3xl mx-auto animate-fade-in">
+        <div className="min-h-screen pb-32 px-4 pt-6 max-w-5xl mx-auto animate-fade-in">
             <header className="mb-8">
                 <h1 className="text-2xl font-bold text-white mb-1">学習分析</h1>
                 <p className="text-xs text-gray-400">パフォーマンスの詳細レポート</p>
@@ -177,6 +183,42 @@ export default function Analysis() {
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
+                </div>
+            </section>
+
+            {/* バッジコレクション (New Section) */}
+            <section className="mb-8">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <Medal size={20} className="text-yellow-400" /> 獲得した称号 (Badges)
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {BADGES.map(badge => {
+                        const isUnlocked = unlockedBadges?.has(badge.id);
+                        return (
+                            <div 
+                                key={badge.id}
+                                className={cn(
+                                    "card p-4 rounded-xl border flex flex-col items-center text-center transition-all duration-300",
+                                    isUnlocked 
+                                        ? "bg-gray-800/40 border-gray-700 hover:border-yellow-500/50" 
+                                        : "bg-gray-900/40 border-gray-800 opacity-60 grayscale"
+                                )}
+                            >
+                                <div className={cn(
+                                    "p-3 rounded-full mb-3",
+                                    isUnlocked ? badge.bg + " " + badge.color : "bg-gray-800 text-gray-600"
+                                )}>
+                                    {isUnlocked ? <badge.icon size={24} /> : <Lock size={24} />}
+                                </div>
+                                <h4 className={cn("text-sm font-bold mb-1", isUnlocked ? "text-white" : "text-gray-500")}>
+                                    {badge.name}
+                                </h4>
+                                <p className="text-[10px] text-gray-400 leading-tight">
+                                    {badge.description}
+                                </p>
+                            </div>
+                        );
+                    })}
                 </div>
             </section>
 

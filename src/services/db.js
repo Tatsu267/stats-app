@@ -2,15 +2,14 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('StatsGrade1DB');
 
-// バージョン6: 
-// - attempts テーブルに 'confidence' カラムを追加
-// - settings テーブルはKey-Value形式で 'userLevel', 'userExp' などを保存
-db.version(6).stores({
+// バージョン7: 称号システム用のテーブルを追加
+db.version(7).stores({
     scores: '++id, score, timestamp',
-    attempts: '++id, questionId, isCorrect, timeTaken, timestamp, chatLog, confidence', // confidence追加
+    attempts: '++id, questionId, isCorrect, timeTaken, timestamp, chatLog, confidence',
     settings: 'key, value',
     customQuestions: '++id, text, options, correctIndex, difficulty, category, timestamp',
-    learningState: 'questionId, nextReviewDate'
+    learningState: 'questionId, nextReviewDate',
+    userBadges: 'badgeId, unlockedAt' // 追加: 獲得した称号IDと日時
 });
 
 // --- Scores Helpers ---
@@ -26,21 +25,13 @@ export const getLatestScore = async () => {
 
 // --- Attempts Helpers ---
 
-/**
- * 学習履歴を追加する
- * @param {string|number} questionId 
- * @param {boolean} isCorrect 
- * @param {number} timeTaken 
- * @param {Array} chatLog 
- * @param {number|null} confidence - 1(Again) ~ 4(Easy), nullなら未設定
- */
 export const addAttempt = async (questionId, isCorrect, timeTaken, chatLog = [], confidence = null) => {
     return await db.attempts.add({ 
         questionId, 
         isCorrect, 
         timeTaken, 
         chatLog,
-        confidence, // 自信度を保存
+        confidence,
         timestamp: new Date() 
     });
 };
@@ -69,7 +60,7 @@ export const getTargetScore = async () => {
     return setting ? parseInt(setting.value, 10) : 80;
 };
 
-// --- Leveling Helpers (New) ---
+// --- Leveling Helpers ---
 
 export const getUserLevel = async () => {
     const setting = await db.settings.get('userLevel');
@@ -89,7 +80,22 @@ export const saveUserExp = async (exp) => {
     return await db.settings.put({ key: 'userExp', value: exp });
 };
 
-// --- Custom Question Helpers (AI Generated) ---
+// --- Badge Helpers (New) ---
+
+export const unlockBadge = async (badgeId) => {
+    const existing = await db.userBadges.get(badgeId);
+    if (!existing) {
+        await db.userBadges.add({ badgeId, unlockedAt: new Date() });
+        return true; // 新規獲得
+    }
+    return false; // 既に獲得済み
+};
+
+export const getUnlockedBadges = async () => {
+    return await db.userBadges.toArray();
+};
+
+// --- Custom Question Helpers ---
 
 export const addCustomQuestion = async (question) => {
     const id = await db.customQuestions.add({
@@ -103,7 +109,7 @@ export const getCustomQuestions = async () => {
     return await db.customQuestions.toArray();
 };
 
-// --- SRS (Spaced Repetition) Helpers ---
+// --- SRS Helpers ---
 
 export const getLearningState = async (questionId) => {
     return await db.learningState.get(questionId);
@@ -128,7 +134,7 @@ export const getDueReviewQuestionIds = async () => {
     return dueItems.map(item => item.questionId);
 };
 
-// --- Data Management (Export/Import/Reset) ---
+// --- Data Management ---
 
 export const exportAllData = async () => {
     const scores = await db.scores.toArray();
@@ -136,45 +142,45 @@ export const exportAllData = async () => {
     const customQuestions = await db.customQuestions.toArray();
     const settings = await db.settings.toArray();
     const learningState = await db.learningState.toArray();
+    const userBadges = await db.userBadges.toArray(); // 追加
 
     return {
-        version: 6, // スキーマバージョンに合わせて更新
+        version: 7,
         timestamp: new Date().toISOString(),
-        data: { scores, attempts, customQuestions, settings, learningState }
+        data: { scores, attempts, customQuestions, settings, learningState, userBadges }
     };
 };
 
 export const importData = async (jsonData) => {
     const { data } = jsonData;
     
-    await db.transaction('rw', db.scores, db.attempts, db.customQuestions, db.settings, db.learningState, async () => {
+    await db.transaction('rw', db.scores, db.attempts, db.customQuestions, db.settings, db.learningState, db.userBadges, async () => {
         await db.scores.clear();
         await db.attempts.clear();
         await db.customQuestions.clear();
         await db.settings.clear();
         await db.learningState.clear();
+        await db.userBadges.clear();
 
         if (data.scores?.length) await db.scores.bulkAdd(data.scores);
         if (data.attempts?.length) await db.attempts.bulkAdd(data.attempts);
         if (data.customQuestions?.length) await db.customQuestions.bulkAdd(data.customQuestions);
         if (data.settings?.length) await db.settings.bulkAdd(data.settings);
         if (data.learningState?.length) await db.learningState.bulkAdd(data.learningState);
+        if (data.userBadges?.length) await db.userBadges.bulkAdd(data.userBadges);
     });
 };
 
 export const resetAllData = async () => {
-    await db.transaction('rw', db.scores, db.attempts, db.customQuestions, db.settings, db.learningState, async () => {
+    await db.transaction('rw', db.scores, db.attempts, db.customQuestions, db.settings, db.learningState, db.userBadges, async () => {
         await db.scores.clear();
         await db.attempts.clear();
         await db.customQuestions.clear();
         await db.learningState.clear();
+        await db.userBadges.clear();
         
-        // APIキーだけは保持する（ユーザー体験のため）
         const apiKeyData = await db.settings.get('apiKey');
         await db.settings.clear();
         if (apiKeyData) await db.settings.put(apiKeyData);
-        
-        // レベル情報などもリセットされる（settings.clear()に含まれるため）
-        // 必要ならここで初期値を再設定するが、get関数でデフォルト値(Lv1, Exp0)を返すので問題ない
     });
 };

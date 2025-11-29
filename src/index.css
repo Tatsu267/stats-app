@@ -1,80 +1,55 @@
 @import "tailwindcss";
 
 @theme {
-  /* グレーのカラーパレットをSlate系（青みがかったグレー）で上書き */
-  --color-gray-50: #f8fafc;
-  --color-gray-100: #f1f5f9;
-  --color-gray-200: #e2e8f0;
-  --color-gray-300: #cbd5e1;
-  --color-gray-400: #94a3b8;
-  --color-gray-500: #64748b;
-  --color-gray-600: #475569;
-  --color-gray-700: #334155;
-  --color-gray-800: #1e293b;
-  --color-gray-900: #0f172a;
-
-  /* プライマリーカラーの定義 */
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-
-  /* フォント設定 */
-  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --color-gray-950: #030712;
 }
 
-/* カスタムユーティリティ */
+@layer base {
+  body {
+    @apply bg-gray-950 text-gray-50 font-sans antialiased;
+    /* 背景に微妙なグラデーションを入れて奥行きを出す（Clock Anxiety軽減のため寒色系で落ち着かせる） */
+    background-image: 
+      radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
+    background-attachment: fixed;
+  }
+}
+
 @layer utilities {
+  .glass-panel {
+    @apply bg-gray-900/60 backdrop-blur-xl border border-white/5 shadow-2xl;
+  }
+  
   .glass-card {
-    @apply bg-gray-800/70 backdrop-blur-md border border-white/10 shadow-xl rounded-2xl;
+    @apply bg-gray-800/40 backdrop-blur-md border border-white/5 shadow-lg rounded-2xl transition-all;
   }
 
+  /* タップ領域を確保（フィッツの法則） */
   .tap-target {
-    min-height: 44px;
-    cursor: pointer;
-    touch-action: manipulation;
+    @apply min-h-[48px] cursor-pointer touch-manipulation;
   }
 
-  .animate-fade-in {
-    animation: fadeIn 0.4s ease-out forwards;
-  }
-
-  .animate-scale-in {
-    animation: scaleIn 0.2s ease-out forwards;
+  .text-balance {
+    text-wrap: balance; /* 見出しの改行を美しくする */
   }
 }
 
-/* アニメーション定義 */
+/* アニメーション */
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* ベーススタイル調整 */
-body {
-  @apply bg-gray-900 text-gray-50 min-h-screen;
-  background-image:
-    radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 100% 100%, rgba(168, 85, 247, 0.1) 0%, transparent 50%);
-  background-attachment: fixed;
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
