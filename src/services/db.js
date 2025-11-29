@@ -2,19 +2,18 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('StatsGrade1DB');
 
-// バージョン4: chatLog を attempts に追加
-db.version(4).stores({
+// バージョン6: 
+// - attempts テーブルに 'confidence' カラムを追加
+// - settings テーブルはKey-Value形式で 'userLevel', 'userExp' などを保存
+db.version(6).stores({
     scores: '++id, score, timestamp',
-    attempts: '++id, questionId, isCorrect, timeTaken, timestamp, chatLog', // chatLog追加
+    attempts: '++id, questionId, isCorrect, timeTaken, timestamp, chatLog, confidence', // confidence追加
     settings: 'key, value',
     customQuestions: '++id, text, options, correctIndex, difficulty, category, timestamp',
     learningState: 'questionId, nextReviewDate'
-}).upgrade(trans => {
-    // 既存データへのマイグレーション（必要なら）
 });
 
-// ... (Existing Helpers) ...
-// ※変更なし部分は省略。addAttemptのみ更新
+// --- Scores Helpers ---
 
 export const addScore = async (score) => {
     return await db.scores.add({ score, timestamp: new Date() });
@@ -25,12 +24,23 @@ export const getLatestScore = async () => {
     return latest ? latest.score : 40;
 };
 
-export const addAttempt = async (questionId, isCorrect, timeTaken, chatLog = []) => {
+// --- Attempts Helpers ---
+
+/**
+ * 学習履歴を追加する
+ * @param {string|number} questionId 
+ * @param {boolean} isCorrect 
+ * @param {number} timeTaken 
+ * @param {Array} chatLog 
+ * @param {number|null} confidence - 1(Again) ~ 4(Easy), nullなら未設定
+ */
+export const addAttempt = async (questionId, isCorrect, timeTaken, chatLog = [], confidence = null) => {
     return await db.attempts.add({ 
         questionId, 
         isCorrect, 
         timeTaken, 
-        chatLog, // チャットログも保存
+        chatLog,
+        confidence, // 自信度を保存
         timestamp: new Date() 
     });
 };
@@ -39,9 +49,7 @@ export const getAttempts = async () => {
     return await db.attempts.toArray();
 };
 
-// ... (Settings, CustomQuestion, SRS, DataManagement Helpers は変更なし、そのまま維持) ...
-// 以前のコードをそのまま貼り付けてください。addAttempt だけ引数を増やしています。
-// 以下、省略せず記載します
+// --- Settings Helpers ---
 
 export const saveApiKey = async (apiKey) => {
     return await db.settings.put({ key: 'apiKey', value: apiKey });
@@ -61,6 +69,28 @@ export const getTargetScore = async () => {
     return setting ? parseInt(setting.value, 10) : 80;
 };
 
+// --- Leveling Helpers (New) ---
+
+export const getUserLevel = async () => {
+    const setting = await db.settings.get('userLevel');
+    return setting ? parseInt(setting.value, 10) : 1;
+};
+
+export const saveUserLevel = async (level) => {
+    return await db.settings.put({ key: 'userLevel', value: level });
+};
+
+export const getUserExp = async () => {
+    const setting = await db.settings.get('userExp');
+    return setting ? parseInt(setting.value, 10) : 0;
+};
+
+export const saveUserExp = async (exp) => {
+    return await db.settings.put({ key: 'userExp', value: exp });
+};
+
+// --- Custom Question Helpers (AI Generated) ---
+
 export const addCustomQuestion = async (question) => {
     const id = await db.customQuestions.add({
         ...question,
@@ -72,6 +102,8 @@ export const addCustomQuestion = async (question) => {
 export const getCustomQuestions = async () => {
     return await db.customQuestions.toArray();
 };
+
+// --- SRS (Spaced Repetition) Helpers ---
 
 export const getLearningState = async (questionId) => {
     return await db.learningState.get(questionId);
@@ -96,6 +128,8 @@ export const getDueReviewQuestionIds = async () => {
     return dueItems.map(item => item.questionId);
 };
 
+// --- Data Management (Export/Import/Reset) ---
+
 export const exportAllData = async () => {
     const scores = await db.scores.toArray();
     const attempts = await db.attempts.toArray();
@@ -104,7 +138,7 @@ export const exportAllData = async () => {
     const learningState = await db.learningState.toArray();
 
     return {
-        version: 3,
+        version: 6, // スキーマバージョンに合わせて更新
         timestamp: new Date().toISOString(),
         data: { scores, attempts, customQuestions, settings, learningState }
     };
@@ -135,8 +169,12 @@ export const resetAllData = async () => {
         await db.customQuestions.clear();
         await db.learningState.clear();
         
+        // APIキーだけは保持する（ユーザー体験のため）
         const apiKeyData = await db.settings.get('apiKey');
         await db.settings.clear();
         if (apiKeyData) await db.settings.put(apiKeyData);
+        
+        // レベル情報などもリセットされる（settings.clear()に含まれるため）
+        // 必要ならここで初期値を再設定するが、get関数でデフォルト値(Lv1, Exp0)を返すので問題ない
     });
 };

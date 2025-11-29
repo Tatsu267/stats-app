@@ -20,25 +20,41 @@ export default function QuestionCard({ question, selectedOption, onSelectOption,
             // 子供に数式が含まれるかチェックするのは難しいので、汎用的なPタグスタイル
             return <p className="mb-4 leading-relaxed text-gray-100">{children}</p>;
         },
-        // 表のデザイン (ここが重要！)
+        // 強調（太字）のデザイン：蛍光ペン風は維持しつつ、少し落ち着かせる
+        strong: ({node, ...props}) => (
+            <strong className="font-bold text-amber-200/90 border-b border-amber-500/30 pb-0.5 mx-1" {...props} />
+        ),
+        // リスト（ul）のデザイン：階層構造を「線」で表現
+        ul: ({node, ...props}) => (
+            <ul className="my-4 pl-4 border-l-2 border-gray-700 space-y-2" {...props} />
+        ),
+        // リスト項目（li）のデザイン：箱を廃止し、テキスト主体に
+        li: ({node, children, ...props}) => (
+            <li className="pl-4 py-1 text-sm md:text-base leading-relaxed relative" {...props}>
+                {/* 箇条書きのドットを自作（視認性向上） */}
+                <span className="absolute left-0 top-2.5 w-1.5 h-1.5 rounded-full bg-blue-500/50"></span>
+                <div className="text-gray-200">{children}</div>
+            </li>
+        ),
+        // 表のデザイン
         table: ({node, ...props}) => (
-            <div className="overflow-x-auto my-4 rounded-lg border border-gray-600">
+            <div className="overflow-x-auto my-6 rounded border border-gray-700">
                 <table className="w-full text-left border-collapse text-sm" {...props} />
             </div>
         ),
         thead: ({node, ...props}) => <thead className="bg-gray-800 text-gray-200" {...props} />,
-        tbody: ({node, ...props}) => <tbody className="bg-gray-900/50" {...props} />,
-        tr: ({node, ...props}) => <tr className="border-b border-gray-700 last:border-0" {...props} />,
-        th: ({node, ...props}) => <th className="p-3 font-bold border-r border-gray-700 last:border-0 whitespace-nowrap" {...props} />,
-        td: ({node, ...props}) => <td className="p-3 border-r border-gray-700 last:border-0" {...props} />,
+        tbody: ({node, ...props}) => <tbody className="bg-gray-900/30" {...props} />,
+        tr: ({node, ...props}) => <tr className="border-b border-gray-800 last:border-0" {...props} />,
+        th: ({node, ...props}) => <th className="p-3 font-semibold border-r border-gray-800 last:border-0 whitespace-nowrap text-gray-400" {...props} />,
+        td: ({node, ...props}) => <td className="p-3 border-r border-gray-800 last:border-0" {...props} />,
     };
 
     return (
         <div className="w-full max-w-3xl mx-auto">
             {/* AI生成タグ */}
             {question.isCustom && (
-                <div className="mb-4 animate-fade-in">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm shadow-amber-900/20">
+                <div className="mb-6 animate-fade-in">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-400 border border-amber-500/20 shadow-sm">
                         <Sparkles size={12} />
                         AI生成問題
                     </span>
@@ -46,8 +62,8 @@ export default function QuestionCard({ question, selectedOption, onSelectOption,
             )}
             
             {/* 問題文 (ReactMarkdownでリッチに表示) */}
-            <div className="mb-6 px-1">
-                <div className="text-xl md:text-2xl font-bold text-white tracking-tight">
+            <div className="mb-8 px-1">
+                <div className="text-lg md:text-xl leading-8 font-medium text-gray-100 tracking-wide">
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm, remarkMath]}
                         rehypePlugins={[rehypeKatex]}
@@ -65,27 +81,27 @@ export default function QuestionCard({ question, selectedOption, onSelectOption,
                         const isSelected = selectedOption === index;
                         const isCorrect = index === correctIndex;
                         
-                        let containerStyle = "border-gray-700 bg-gray-800/40 hover:bg-gray-800 hover:border-gray-600";
-                        let iconColor = "text-gray-500";
-                        let textColor = "text-gray-300";
+                        let containerStyle = "border-gray-800 bg-gray-800/30 hover:bg-gray-800 hover:border-gray-600";
+                        let iconColor = "text-gray-600";
+                        let textColor = "text-gray-400";
 
                         if (isSelected && !isAnswered) {
-                            containerStyle = "border-blue-500 bg-blue-500/10 shadow-[0_0_15px_rgba(59,130,246,0.15)] ring-1 ring-blue-500/50";
+                            containerStyle = "border-blue-500/50 bg-blue-500/10 ring-1 ring-blue-500/20";
                             iconColor = "text-blue-400";
                             textColor = "text-blue-100";
                         }
 
                         if (isAnswered) {
                             if (isCorrect) {
-                                containerStyle = "border-green-500 bg-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.15)]";
+                                containerStyle = "border-green-500/50 bg-green-500/10";
                                 iconColor = "text-green-400";
                                 textColor = "text-green-100 font-bold";
                             } else if (isSelected && !isCorrect) {
-                                containerStyle = "border-red-500 bg-red-500/10 opacity-80";
+                                containerStyle = "border-red-500/50 bg-red-500/10 opacity-70";
                                 iconColor = "text-red-400";
                                 textColor = "text-red-200";
                             } else {
-                                containerStyle = "border-gray-800 bg-gray-900/20 opacity-40";
+                                containerStyle = "border-gray-800 bg-transparent opacity-40";
                             }
                         }
 
@@ -95,26 +111,26 @@ export default function QuestionCard({ question, selectedOption, onSelectOption,
                                 onClick={() => !isAnswered && onSelectOption(index)}
                                 disabled={isAnswered}
                                 className={cn(
-                                    "w-full text-left p-4 md:p-5 rounded-xl border-2 transition-all duration-200 min-h-[72px] relative overflow-hidden group tap-target",
+                                    "w-full text-left p-4 rounded-lg border transition-all duration-200 relative overflow-hidden group tap-target",
                                     "flex items-center gap-4 active:scale-[0.99]",
                                     containerStyle
                                 )}
                             >
-                                <div className="flex-shrink-0 flex items-center justify-center w-8 h-8">
+                                <div className="flex-shrink-0 flex items-center justify-center w-6 h-6">
                                     {isAnswered && isCorrect ? (
-                                        <CheckCircle2 className="w-7 h-7 text-green-500 animate-scale-in" strokeWidth={2.5} />
+                                        <CheckCircle2 className="w-6 h-6 text-green-500 animate-scale-in" strokeWidth={2.5} />
                                     ) : isAnswered && isSelected && !isCorrect ? (
-                                        <XCircle className="w-7 h-7 text-red-500 animate-scale-in" strokeWidth={2.5} />
+                                        <XCircle className="w-6 h-6 text-red-500 animate-scale-in" strokeWidth={2.5} />
                                     ) : (
                                         <div className={cn(
-                                            "w-7 h-7 rounded-full border-2 flex items-center justify-center text-sm font-bold transition-colors",
+                                            "w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-colors",
                                             isSelected ? "border-blue-500 bg-blue-500 text-white" : "border-gray-600 text-gray-500 group-hover:border-gray-500"
                                         )}>
                                             {String.fromCharCode(65 + index)}
                                         </div>
                                     )}
                                 </div>
-                                <div className={cn("text-base md:text-lg leading-snug flex-1", textColor)}>
+                                <div className={cn("text-base flex-1", textColor)}>
                                     {/* 選択肢内でも数式を使えるようにMarkdownで描画 */}
                                     <ReactMarkdown
                                         remarkPlugins={[remarkMath]}

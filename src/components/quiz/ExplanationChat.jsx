@@ -1,81 +1,62 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Send, User, BrainCircuit, Loader2, Bot, Maximize2, Minimize2 } from 'lucide-react';
+import { Send, User, BrainCircuit, Loader2, Bot, Maximize2, Minimize2 } from 'lucide-react'; // ChevronRightは削除
 import { getInitialExplanation, sendChatMessage } from '../../services/ai';
 import { cn } from '../../utils/cn';
-import { BlockMath, InlineMath } from 'react-katex';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
-// ... (RichTextRenderer, MarkdownText は変更なし。省略せずそのまま記述してください) ...
-// (長くなるため省略しますが、元のコードのままでOKです)
-const RichTextRenderer = ({ text }) => {
-    if (!text) return null;
-    const cleanText = text.replace(/\\\$/g, '$');
-    const parts = cleanText.split(/(\$\$[\s\S]*?\$\$)/g);
-    return (
-        <div className="text-sm md:text-base space-y-2">
-            {parts.map((part, index) => {
-                if (part.startsWith('$$') && part.endsWith('$$')) {
-                    const mathContent = part.slice(2, -2).trim();
-                    return <div key={index} className="my-3 overflow-x-auto py-1"><BlockMath math={mathContent} settings={{ strict: false }} /></div>;
-                }
-                return <MarkdownText key={index} text={part} />;
-            })}
+// Markdownのスタイル定義（QuestionCardと同じシンプルで見やすいデザインに統一）
+const markdownComponents = {
+    p: ({node, children}) => <p className="mb-3 leading-relaxed last:mb-0 text-gray-200">{children}</p>,
+    
+    // 強調表示（QuestionCardと統一）
+    strong: ({node, ...props}) => (
+        <strong className="font-bold text-amber-200/90 border-b border-amber-500/30 pb-0.5 mx-1" {...props} />
+    ),
+    
+    // ▼▼▼ 修正箇所: リスト（ul）を「線」で表現するスタイルに変更 ▼▼▼
+    ul: ({node, ...props}) => (
+        <ul className="my-3 pl-3 border-l-2 border-gray-600/50 space-y-1" {...props} />
+    ),
+    
+    // ▼▼▼ 修正箇所: リスト項目（li）の「箱」を廃止し、シンプルに ▼▼▼
+    li: ({node, children, ...props}) => (
+        <li className="pl-3 py-0.5 text-sm leading-relaxed relative group" {...props}>
+            {/* 視認性を高めるドット */}
+            <span className="absolute left-0 top-2 w-1.5 h-1.5 rounded-full bg-blue-400/60 group-hover:bg-blue-400 transition-colors"></span>
+            <div className="text-gray-300">{children}</div>
+        </li>
+    ),
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+    table: ({node, ...props}) => (
+        <div className="overflow-x-auto my-3 rounded-lg border border-gray-700 bg-gray-900/30">
+            <table className="w-full text-left border-collapse text-xs md:text-sm" {...props} />
         </div>
-    );
+    ),
+    thead: ({node, ...props}) => <thead className="bg-gray-800 text-gray-200" {...props} />,
+    tbody: ({node, ...props}) => <tbody className="divide-y divide-gray-700/50" {...props} />,
+    tr: ({node, ...props}) => <tr className="last:border-0" {...props} />,
+    th: ({node, ...props}) => <th className="p-2 font-semibold border-r border-gray-700 last:border-0 whitespace-nowrap text-gray-400" {...props} />,
+    td: ({node, ...props}) => <td className="p-2 border-r border-gray-700 last:border-0 text-gray-300" {...props} />,
+    
+    code: ({node, inline, className, children, ...props}) => {
+        return inline ? (
+            <code className="bg-gray-700/50 px-1 py-0.5 rounded text-xs font-mono text-pink-300 border border-gray-600/30" {...props}>
+                {children}
+            </code>
+        ) : (
+            <div className="my-2 p-3 bg-[#1E293B] rounded-lg border border-gray-700 font-mono text-xs overflow-x-auto shadow-inner">
+                <code className="text-gray-300" {...props}>{children}</code>
+            </div>
+        );
+    }
 };
 
-const MarkdownText = ({ text }) => {
-    const lines = text.split('\n');
-    let inCodeBlock = false;
-    let codeContent = [];
-    const renderedLines = [];
-
-    lines.forEach((line, i) => {
-        const trimmedLine = line.trim();
-        if (trimmedLine.startsWith('```')) {
-            if (inCodeBlock) {
-                renderedLines.push(
-                    <div key={`code-${i}`} className="my-2 p-3 bg-[#1E293B] rounded-lg border border-gray-700 font-mono text-xs overflow-x-auto shadow-inner">
-                        <pre className="whitespace-pre">{codeContent.join('\n')}</pre>
-                    </div>
-                );
-                inCodeBlock = false;
-                codeContent = [];
-            } else {
-                inCodeBlock = true;
-            }
-            return;
-        }
-        if (inCodeBlock) {
-            codeContent.push(line);
-            return;
-        }
-        if (trimmedLine.startsWith('## ') || trimmedLine.startsWith('### ')) {
-            const headingText = trimmedLine.replace(/^#+\s+/, '');
-            renderedLines.push(
-                <h3 key={i} className="text-lg font-bold text-blue-300 mt-6 mb-3 border-b border-blue-500/30 pb-1 flex items-center gap-2">
-                    <span className="w-1.5 h-6 bg-blue-500 rounded-full inline-block"></span>
-                    {headingText}
-                </h3>
-            );
-            return;
-        }
-        const parseInline = (str) => {
-            const segments = str.split(/(\$.*?\$|\*\*.*?\*\*|__.*?__)/g);
-            return segments.map((seg, j) => {
-                if (seg.startsWith('$') && seg.endsWith('$')) return <span key={j} className="mx-1"><InlineMath math={seg.slice(1, -1)} settings={{ strict: false }} /></span>;
-                if (seg.startsWith('**') && seg.endsWith('**')) return <strong key={j} className="text-white font-bold bg-white/10 px-1 rounded">{seg.slice(2, -2)}</strong>;
-                if (seg.startsWith('__') && seg.endsWith('__')) return <span key={j} className="text-red-400 font-bold bg-red-900/20 px-1 rounded border border-red-500/20">{seg.slice(2, -2)}</span>;
-                return seg;
-            });
-        };
-        if (trimmedLine === '') renderedLines.push(<div key={i} className="h-2" />);
-        else renderedLines.push(<p key={i} className="mb-1 leading-relaxed text-gray-300">{parseInline(line)}</p>);
-    });
-    return <>{renderedLines}</>;
-};
-
-// ▼▼▼ onChatUpdate を受け取るように修正 ▼▼▼
 export default function ExplanationChat({ question, selectedOption, correctIndex, isCorrect, onChatUpdate }) {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -95,7 +76,6 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
             scrollToBottom();
         }
         
-        // ▼▼▼ チャット更新時に親へ通知 ▼▼▼
         if (onChatUpdate && messages.length > 0) {
             onChatUpdate(messages);
         }
@@ -140,7 +120,6 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
         }
     };
 
-    // ... (ChatContent の JSX は変更なし) ...
     const ChatContent = (
         <div className={cn(
             "flex flex-col bg-[#0F172A] border border-gray-700 overflow-hidden shadow-2xl transition-all duration-300 ease-in-out",
@@ -183,16 +162,19 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
                         )}
                         
                         <div className={cn(
-                            "p-3 md:p-5 rounded-2xl shadow-md overflow-hidden",
+                            "p-3 md:p-5 rounded-2xl shadow-md overflow-hidden text-sm md:text-base",
                             msg.role === 'user' 
                                 ? "bg-gray-700 text-white rounded-tr-sm max-w-[85%]" 
                                 : "bg-gray-800/90 border border-gray-700/50 text-gray-100 rounded-tl-sm flex-1 min-w-0"
                         )}>
-                            {msg.role === 'user' ? (
-                                <p className="text-sm md:text-base whitespace-pre-wrap">{msg.text}</p>
-                            ) : (
-                                <RichTextRenderer text={msg.text} />
-                            )}
+                            {/* ReactMarkdownを使ってリッチに描画 */}
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm, remarkMath]}
+                                rehypePlugins={[rehypeKatex]}
+                                components={markdownComponents}
+                            >
+                                {msg.text}
+                            </ReactMarkdown>
                         </div>
 
                         {msg.role === 'user' && (

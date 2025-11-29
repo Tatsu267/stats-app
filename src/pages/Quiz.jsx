@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowRight, CheckCircle, XCircle, Loader2, Sparkles, ArrowLeft, AlertTriangle, Tag, AlertCircle, StopCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle, XCircle, Loader2, Sparkles, ArrowLeft, AlertTriangle, Tag, AlertCircle, StopCircle, ThumbsUp, HelpCircle, AlertOctagon, Trophy, Swords, TrendingDown } from 'lucide-react'; // TrendingDown追加
 import questionsData from '../data/questions.json';
 import QuestionCard from '../components/quiz/QuestionCard';
 import ExplanationChat from '../components/quiz/ExplanationChat';
 import Timer from '../components/quiz/Timer';
 import { calculateNewScore } from '../utils/scoring';
-import { db, addScore, addAttempt, getLatestScore, addCustomQuestion, getLearningState, updateLearningState, getDueReviewQuestionIds } from '../services/db';
-import { calculateNextReview } from '../utils/srs';
+import { db, addScore, addAttempt, getLatestScore, addCustomQuestion, getLearningState, updateLearningState, getDueReviewQuestionIds, getUserLevel, getUserExp, saveUserLevel, saveUserExp } from '../services/db';
+import { calculateNextReview, SRS_RATINGS } from '../utils/srs';
+import { calculateExpGain, getNextLevelExp, selectQuestionsByLevel, getDifficultyDistribution } from '../utils/leveling';
 import { generateAiQuestion, generateRolePlayQuestion } from '../services/ai';
 import { cn } from '../utils/cn';
 import { CATEGORY_NAMES, CATEGORY_CONFIG } from '../utils/categories';
@@ -24,6 +25,8 @@ export default function Quiz() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
   const [isAnswered, setIsAnswered] = useState(false);
+  const [waitingForConfidence, setWaitingForConfidence] = useState(false);
+  
   const [timeTaken, setTimeTaken] = useState(0);
   const [currentScore, setCurrentScore] = useState(40);
 
@@ -32,6 +35,11 @@ export default function Quiz() {
   const [selectedRole, setSelectedRole] = useState('');
   const [noticeMessage, setNoticeMessage] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const [earnedExp, setEarnedExp] = useState(0); 
+  const [totalSessionExp, setTotalSessionExp] = useState(0);
+  const [levelUpData, setLevelUpData] = useState(null); 
+  const [levelDownData, setLevelDownData] = useState(null); // ▼ 追加: ランクダウン通知用
 
   const [sessionData, setSessionData] = useState([]);
   const currentChatLog = useRef([]);
@@ -79,14 +87,36 @@ export default function Quiz() {
     }
   }, [location.state]);
 
-  const fetchNextAiQuestion = async (categoryOrRole) => {
+  const fetchNextAiQuestion = async (categoryOrRole, currentMode = mode) => {
       setIsGenerating(true);
       try {
+          let targetDifficulty = 'Medium';
+          let targetCategory = categoryOrRole;
+
+          if (currentMode === 'ai_rank_match') {
+              const userLevel = await getUserLevel();
+              const dist = getDifficultyDistribution(userLevel);
+              const rand = Math.random();
+              
+              // 確率分布に基づいて難易度を決定（Lv1-3なら必ずEasyになる）
+              if (rand < dist.Easy) targetDifficulty = 'Easy';
+              else if (rand < dist.Easy + dist.Medium) targetDifficulty = 'Medium';
+              else targetDifficulty = 'Hard';
+
+              targetCategory = CATEGORY_NAMES[Math.floor(Math.random() * CATEGORY_NAMES.length)];
+              
+              console.log(`[Rank Match] Lv.${userLevel} -> Difficulty: ${targetDifficulty} (E:${dist.Easy}), Category: ${targetCategory}`);
+          } else if (currentMode === 'ai_custom') {
+              const difficulties = ['Easy', 'Medium', 'Hard'];
+              targetDifficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
+              console.log(`[Practice] Category: ${targetCategory} -> Difficulty: ${targetDifficulty} (Random)`);
+          }
+
           let newQuestion;
-          if (mode === 'role_play') {
-              newQuestion = await generateRolePlayQuestion(categoryOrRole);
+          if (currentMode === 'role_play') {
+              newQuestion = await generateRolePlayQuestion(categoryOrRole, targetDifficulty);
           } else {
-              newQuestion = await generateAiQuestion(categoryOrRole);
+              newQuestion = await generateAiQuestion(targetCategory, targetDifficulty);
           }
           
           const id = await addCustomQuestion(newQuestion);
@@ -104,16 +134,19 @@ export default function Quiz() {
   const startQuiz = async (targetMode = mode, targetCategory = selectedCategory, targetRole = selectedRole) => {
     if (noticeMessage) return;
 
+    setMode(targetMode); 
+
     const scrollContainer = document.querySelector('main');
     if (scrollContainer) scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
     else window.scrollTo({ top: 0, behavior: 'smooth' });
 
     setSessionData([]);
+    setTotalSessionExp(0);
 
-    if (targetMode === 'ai_custom' || targetMode === 'role_play') {
+    if (targetMode === 'ai_rank_match' || targetMode === 'ai_custom' || targetMode === 'role_play') {
         try {
             const param = targetMode === 'role_play' ? targetRole : targetCategory;
-            const q = await fetchNextAiQuestion(param);
+            const q = await fetchNextAiQuestion(param, targetMode); 
             setQuestions([q]);
             setQuizPhase('playing');
             setCurrentQuestionIndex(0);
@@ -163,8 +196,14 @@ export default function Quiz() {
       return;
     }
 
-    let selected = filteredQuestions.sort(() => 0.5 - Math.random());
-    if (targetMode === 'random') selected = selected.slice(0, 5);
+    let selected = [];
+    if (targetMode === 'random' || (targetMode === 'category' && filteredQuestions.length > 5)) {
+        const userLevel = await getUserLevel();
+        selected = selectQuestionsByLevel(filteredQuestions, userLevel, 5);
+    } else {
+        selected = filteredQuestions.sort(() => 0.5 - Math.random());
+        if (targetMode === 'random') selected = selected.slice(0, 5);
+    }
 
     setQuestions(selected);
     setQuizPhase('playing');
@@ -184,18 +223,79 @@ export default function Quiz() {
     const isCorrect = selectedOption === question.correctIndex;
     setIsAnswered(true);
     
-    const newScore = calculateNewScore(currentScore, isCorrect, question.difficulty, timeTaken);
+    const newScore = calculateNewScore(currentScore, isCorrect, question.difficulty || 'Medium', timeTaken);
     setCurrentScore(newScore);
     
-    await addAttempt(question.id, isCorrect, timeTaken, []);
-    await addScore(newScore);
+    if (isCorrect) {
+        setWaitingForConfidence(true);
+    } else {
+        await processResult(SRS_RATINGS.AGAIN);
+    }
+  };
+
+  const processResult = async (rating) => {
+    const question = questions[currentQuestionIndex];
+    const isCorrect = selectedOption === question.correctIndex;
+
+    await addAttempt(question.id, isCorrect, timeTaken, [], rating);
+    await addScore(currentScore);
 
     const currentState = await getLearningState(question.id);
-    const nextState = calculateNextReview(currentState, isCorrect);
+    const nextState = calculateNextReview(currentState, rating);
     await updateLearningState(question.id, nextState);
 
+    let xpGain = 0;
+    if (mode === 'ai_custom') {
+        xpGain = 0;
+    } else {
+        xpGain = calculateExpGain(question.difficulty || 'Medium', rating);
+    }
+    
+    setEarnedExp(xpGain);
+    setTotalSessionExp(prev => prev + xpGain);
+
+    // ▼▼▼ XPとレベルの更新ロジック ▼▼▼
+    if (xpGain !== 0) {
+        let currentLevel = await getUserLevel();
+        let currentExp = await getUserExp();
+        let newExp = currentExp + xpGain;
+        
+        if (xpGain > 0) {
+             // --- Level Up Check ---
+            let nextLevelExp = getNextLevelExp(currentLevel);
+            if (newExp >= nextLevelExp) {
+                newExp -= nextLevelExp;
+                currentLevel += 1;
+                // UI通知
+                setLevelUpData({ level: currentLevel });
+                setTimeout(() => setLevelUpData(null), 3000);
+            }
+        } else {
+            // --- Level Down Check ---
+            if (newExp < 0) {
+                if (currentLevel > 1) {
+                    currentLevel -= 1;
+                    const prevLevelMaxExp = getNextLevelExp(currentLevel);
+                    newExp = prevLevelMaxExp + newExp; // 例: 0 + (-10) = max - 10
+                    
+                    // UI通知
+                    setLevelDownData({ level: currentLevel });
+                    setTimeout(() => setLevelDownData(null), 3000);
+                } else {
+                    newExp = 0; // Lv1の場合は0でストップ
+                }
+            }
+        }
+
+        await saveUserLevel(currentLevel);
+        await saveUserExp(newExp);
+    }
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
     setSessionData(prev => [...prev, { question, isCorrect, timeTaken, chatLog: [] }]);
-    currentChatLog.current = []; 
+    currentChatLog.current = [];
+    
+    setWaitingForConfidence(false);
   };
 
   const saveCurrentChatLog = async () => {
@@ -212,18 +312,20 @@ export default function Quiz() {
 
   const handleNext = async () => {
     await saveCurrentChatLog();
+    setEarnedExp(0); 
 
     const scrollContainer = document.querySelector('main');
     if (scrollContainer) scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
     else window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    if (mode === 'ai_custom' || mode === 'role_play') {
+    if (mode === 'ai_rank_match' || mode === 'ai_custom' || mode === 'role_play') {
         setSelectedOption(null);
         setIsAnswered(false);
+        setWaitingForConfidence(false);
         setTimeTaken(0);
         try {
-            const param = mode === 'role_play' ? selectedRole : selectedCategory;
-            const nextQ = await fetchNextAiQuestion(param);
+            const param = mode === 'role_play' ? selectedRole : (mode === 'ai_custom' ? selectedCategory : null);
+            const nextQ = await fetchNextAiQuestion(param, mode);
             setQuestions(prev => [...prev, nextQ]);
             setCurrentQuestionIndex(prev => prev + 1);
         } catch (e) {
@@ -237,6 +339,7 @@ export default function Quiz() {
       setCurrentQuestionIndex(prev => prev + 1);
       setSelectedOption(null);
       setIsAnswered(false);
+      setWaitingForConfidence(false);
       setTimeTaken(0);
     } else {
       finishSession();
@@ -245,7 +348,7 @@ export default function Quiz() {
 
   const finishSession = async () => {
       await saveCurrentChatLog(); 
-      navigate('/result', { state: { sessionData } });
+      navigate('/result', { state: { sessionData, totalExp: totalSessionExp } });
   };
 
   const handleQuit = async () => {
@@ -256,7 +359,7 @@ export default function Quiz() {
 
   const handleFinish = () => { navigate('/'); };
 
-  if (isGenerating && questions.length === 0) {
+  if (isGenerating) {
      return (
         <div className="flex flex-col items-center justify-center h-full p-6 animate-fade-in">
             <div className="flex flex-col items-center gap-6">
@@ -272,6 +375,7 @@ export default function Quiz() {
         </div>
      );
   }
+
   if (quizPhase === 'notice' && noticeMessage) {
       return (
         <div className="flex flex-col items-center justify-center h-full p-6 animate-fade-in">
@@ -290,16 +394,14 @@ export default function Quiz() {
   }
   
   if (quizPhase === 'role_select') {
+      // ... (変更なし)
       return (
         <div className="p-4 md:p-8 max-w-4xl mx-auto h-full flex flex-col animate-fade-in pb-24 pt-6">
             <button onClick={() => navigate('/')} className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 w-fit p-2 -ml-2">
                 <ArrowLeft size={20} /> <span className="font-bold text-sm">戻る</span>
             </button>
             <h1 className="text-2xl font-bold text-white mb-2 text-center">役割（ロール）を選択</h1>
-            <p className="text-gray-400 text-xs text-center mb-8">
-                実務で直面する課題を解決しながら学習しましょう
-            </p>
-            <div className="grid gap-4">
+            <div className="grid gap-4 mt-6">
               {ROLE_IDS.map((roleId) => {
                   const role = ROLES[roleId];
                   return (
@@ -337,6 +439,7 @@ export default function Quiz() {
   }
 
   if (quizPhase === 'category_select') {
+      // ... (変更なし)
       const isAiMode = mode === 'ai_custom';
       return (
         <div className="p-4 md:p-8 max-w-4xl mx-auto h-full flex flex-col animate-fade-in pb-24 pt-6">
@@ -349,6 +452,38 @@ export default function Quiz() {
             <p className="text-gray-400 text-xs text-center mb-8">
                 {isAiMode ? "AIがその分野の新作問題を作成します" : "各分野の正答率を確認して弱点を補強しましょう"}
             </p>
+
+            {isAiMode && (
+                <div className="mb-6">
+                    <button
+                        onClick={() => startQuiz('ai_rank_match')}
+                        className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-yellow-600 to-orange-600 p-5 text-left shadow-lg shadow-orange-900/20 transition-all active:scale-[0.98] tap-target border-2 border-yellow-400/30 group"
+                    >
+                        <div className="absolute top-0 right-0 p-4 opacity-10"><Trophy size={80} className="text-yellow-300" /></div>
+                        <div className="relative z-10 flex items-center gap-4">
+                            <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-inner text-yellow-100">
+                                <Swords size={28} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-white mb-0.5 flex items-center gap-2">
+                                    ランクマッチ
+                                    <span className="text-[10px] bg-yellow-500 text-black px-2 py-0.5 rounded font-black">XP獲得</span>
+                                </h3>
+                                <p className="text-orange-100 text-xs font-medium opacity-90">
+                                    レベルに応じた難易度でランダム出題
+                                </p>
+                            </div>
+                            <div className="ml-auto w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-colors">
+                                <ArrowRight className="text-white w-5 h-5" />
+                            </div>
+                        </div>
+                    </button>
+                    <div className="my-6 flex items-center gap-4 before:h-px before:flex-1 before:bg-gray-700 after:h-px after:flex-1 after:bg-gray-700">
+                        <span className="text-xs text-gray-500 font-bold">OR SELECT CATEGORY</span>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               {categories.map((cat) => {
                   const stat = categoryStats[cat] || { correct: 0, total: 0 };
@@ -362,17 +497,16 @@ export default function Quiz() {
                       className={cn(
                           "relative p-4 rounded-xl text-left transition-all active:scale-95 group tap-target border-2",
                           isAiMode 
-                            ? "bg-amber-900/20 border-amber-500/30 hover:border-amber-400 hover:bg-amber-900/30"
+                            ? "bg-gray-800/40 border-gray-700 hover:border-blue-500 hover:bg-gray-800"
                             : isWeak 
                                 ? "bg-red-900/20 border-red-500/50 hover:bg-red-900/30" 
                                 : "bg-gray-800/60 border-gray-700 hover:border-blue-500 hover:bg-blue-900/20"
                       )}
                     >
                       <div className="flex justify-between items-start mb-2">
-                          <span className={cn("text-sm font-bold block", isAiMode ? "text-amber-200" : isWeak ? "text-red-200" : config?.color || "text-gray-200")}>
+                          <span className={cn("text-sm font-bold block", isAiMode ? "text-gray-300" : isWeak ? "text-red-200" : config?.color || "text-gray-200")}>
                             {cat}
                           </span>
-                          {isAiMode && <Sparkles size={14} className="text-amber-400" />}
                           {!isAiMode && isWeak && <AlertTriangle size={14} className="text-red-400" />}
                       </div>
                       {!isAiMode && (
@@ -391,7 +525,7 @@ export default function Quiz() {
                           </>
                       )}
                       {isAiMode && (
-                          <div className="text-xs text-amber-500/70 mt-2 font-medium">生成スタート &rarr;</div>
+                          <div className="text-xs text-gray-500 mt-2 font-medium">練習モード (XPなし)</div>
                       )}
                     </button>
                   );
@@ -403,16 +537,12 @@ export default function Quiz() {
 
   if (quizPhase === 'setup') return <div className="p-6 md:p-8 animate-fade-in" />;
   
-  // FINISHED PHASE
   if (quizPhase === 'finished') {
-      // 結果画面へ直接遷移させるので、ここは到達しない想定だが念のため
       return <div className="p-6 text-white text-center">終了</div>; 
   }
 
-  // --- PLAYING PHASE ---
   const currentQuestion = questions[currentQuestionIndex];
 
-  // ▼▼▼ 修正: ガード処理（Undefined Error防止） ▼▼▼
   if (!currentQuestion) {
       return (
         <div className="flex flex-col items-center justify-center h-full p-6">
@@ -421,27 +551,47 @@ export default function Quiz() {
         </div>
       );
   }
-  // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-  // ロール情報の取得
   const roleInfo = currentQuestion.role ? ROLES[currentQuestion.role] : null;
 
   return (
-    <div className="flex flex-col h-full max-w-4xl mx-auto px-4 md:px-8 animate-fade-in pb-24 md:pb-8">
+    <div className="flex flex-col h-full max-w-4xl mx-auto px-4 md:px-8 animate-fade-in pb-24 md:pb-8 relative">
+        {/* レベルアップ通知 */}
+        {levelUpData && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+                <div className="animate-bounce bg-yellow-500 text-black px-8 py-4 rounded-2xl shadow-2xl border-4 border-white transform scale-110">
+                    <h3 className="text-3xl font-black flex items-center gap-2">
+                        <Trophy size={32} /> LEVEL UP!
+                    </h3>
+                    <p className="text-center font-bold text-lg mt-1">Lv.{levelUpData.level}</p>
+                </div>
+            </div>
+        )}
+        
+        {/* ▼▼▼ 追加: ランクダウン通知 ▼▼▼ */}
+        {levelDownData && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+                <div className="animate-pulse bg-red-600 text-white px-8 py-4 rounded-2xl shadow-2xl border-4 border-red-400 transform scale-110">
+                    <h3 className="text-3xl font-black flex items-center gap-2">
+                        <TrendingDown size={32} /> RANK DOWN...
+                    </h3>
+                    <p className="text-center font-bold text-lg mt-1">Lv.{levelDownData.level}</p>
+                </div>
+            </div>
+        )}
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pt-4">
         <div className="flex items-center justify-between w-full">
             <div>
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider border border-gray-700 px-1.5 py-0.5 rounded">
-                        {mode === 'mock' ? 'MOCK' : mode === 'ai_custom' ? 'AI' : mode === 'role_play' ? 'ROLE' : 'PRACTICE'}
+                        {mode === 'mock' ? 'MOCK' : mode === 'ai_rank_match' ? 'RANK' : mode === 'ai_custom' ? 'PRACTICE' : mode === 'role_play' ? 'ROLE' : 'QUIZ'}
                     </span>
-                     {/* ロールタグ */}
                      {roleInfo && (
                          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-1", roleInfo.bg, roleInfo.border, roleInfo.color)}>
                             <roleInfo.icon size={10} /> {roleInfo.name}
                          </span>
                      )}
-                     {/* 難易度タグ */}
                      {currentQuestion.difficulty && (
                          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border", 
                             currentQuestion.difficulty === 'Easy' ? "text-green-400 border-green-500/30 bg-green-500/10" :
@@ -451,7 +601,6 @@ export default function Quiz() {
                             {currentQuestion.difficulty}
                          </span>
                      )}
-                     {/* サブカテゴリタグ */}
                      {currentQuestion.subcategory && (
                         <span className="text-[10px] font-bold text-blue-300 border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
                            <Tag size={10} /> {currentQuestion.subcategory}
@@ -462,7 +611,7 @@ export default function Quiz() {
                 
                 <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-3">
                     Question {currentQuestionIndex + 1}
-                    <span className="text-base font-normal text-gray-500">/ {mode === 'ai_custom' || mode === 'role_play' ? '∞' : questions.length}</span>
+                    <span className="text-base font-normal text-gray-500">/ {(mode === 'ai_custom' || mode === 'role_play' || mode === 'ai_rank_match') ? '∞' : questions.length}</span>
                 </h1>
             </div>
             
@@ -478,17 +627,19 @@ export default function Quiz() {
             </div>
         </div>
     </div>
-    {/* ... (以下省略せず、既存のコードのまま) ... */}
+    
       <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden mb-6">
-        <div className={cn("h-full transition-all duration-500 ease-out", mode === 'mock' ? "bg-gradient-to-r from-teal-500 to-emerald-500" : "bg-gradient-to-r from-blue-500 to-purple-500")} style={{ width: (mode === 'ai_custom' || mode === 'role_play') ? '100%' : `${((currentQuestionIndex + 1) / questions.length) * 100}%` }} />
+        <div className={cn("h-full transition-all duration-500 ease-out", mode === 'mock' ? "bg-gradient-to-r from-teal-500 to-emerald-500" : "bg-gradient-to-r from-blue-500 to-purple-500")} style={{ width: (mode === 'ai_custom' || mode === 'role_play' || mode === 'ai_rank_match') ? '100%' : `${((currentQuestionIndex + 1) / questions.length) * 100}%` }} />
       </div>
 
       <div className="flex-1 flex flex-col justify-start mb-4">
         <QuestionCard question={currentQuestion} selectedOption={selectedOption} onSelectOption={handleOptionSelect} isAnswered={isAnswered} correctIndex={currentQuestion.correctIndex} />
-        
-        {isAnswered && isGenerating && (mode === 'ai_custom' || mode === 'role_play') && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-amber-400 text-sm animate-pulse">
-                <Loader2 className="animate-spin" size={16} /> 次の問題を作成中...
+
+        {isAnswered && earnedExp !== 0 && !waitingForConfidence && (
+            <div className="mt-2 text-center animate-fade-in">
+                <span className={cn("text-sm font-bold px-3 py-1 rounded-full border", earnedExp > 0 ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" : "text-red-400 bg-red-500/10 border-red-500/20")}>
+                    {earnedExp > 0 ? `+${earnedExp}` : earnedExp} XP
+                </span>
             </div>
         )}
 
@@ -509,13 +660,29 @@ export default function Quiz() {
         <div className="max-w-4xl mx-auto flex justify-end gap-3">
           {!isAnswered ? (
             <button className={cn("btn w-full md:w-auto px-8 py-3.5 rounded-xl font-bold transition-all active:scale-95 shadow-lg text-base", selectedOption !== null ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25" : "bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700")} onClick={handleSubmit} disabled={selectedOption === null}>回答する</button>
+          ) : waitingForConfidence ? (
+            <div className="flex gap-2 w-full md:w-auto">
+                <div className="hidden md:flex items-center text-xs text-gray-400 mr-2 font-bold">自信度は？</div>
+                <button onClick={() => processResult(SRS_RATINGS.HARD)} className="flex-1 md:flex-none btn bg-yellow-600/80 hover:bg-yellow-600 text-white px-4 py-3 rounded-xl flex flex-col items-center justify-center gap-1 min-w-[80px] transition-transform active:scale-95">
+                    <AlertOctagon size={18} />
+                    <span className="text-[10px] font-bold">難しい</span>
+                </button>
+                <button onClick={() => processResult(SRS_RATINGS.GOOD)} className="flex-1 md:flex-none btn bg-green-600/80 hover:bg-green-600 text-white px-4 py-3 rounded-xl flex flex-col items-center justify-center gap-1 min-w-[80px] transition-transform active:scale-95">
+                    <ThumbsUp size={18} />
+                    <span className="text-[10px] font-bold">普通</span>
+                </button>
+                <button onClick={() => processResult(SRS_RATINGS.EASY)} className="flex-1 md:flex-none btn bg-blue-600/80 hover:bg-blue-600 text-white px-4 py-3 rounded-xl flex flex-col items-center justify-center gap-1 min-w-[80px] transition-transform active:scale-95">
+                    <Sparkles size={18} />
+                    <span className="text-[10px] font-bold">簡単</span>
+                </button>
+            </div>
           ) : (
             <button 
                 onClick={handleNext} 
-                disabled={(mode === 'ai_custom' || mode === 'role_play') && isGenerating}
+                disabled={(mode === 'ai_custom' || mode === 'role_play' || mode === 'ai_rank_match') && isGenerating}
                 className="btn w-full md:w-auto flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-blue-900 hover:bg-gray-100 rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-white/10 text-base disabled:opacity-70 disabled:cursor-wait"
             >
-                {(mode === 'ai_custom' || mode === 'role_play') ? '次の問題へ' : (currentQuestionIndex < questions.length - 1 ? '次へ進む' : '結果を見る')} <ArrowRight size={18} />
+                {(mode === 'ai_custom' || mode === 'role_play' || mode === 'ai_rank_match') ? '次の問題へ' : (currentQuestionIndex < questions.length - 1 ? '次へ進む' : '結果を見る')} <ArrowRight size={18} />
             </button>
           )}
         </div>
