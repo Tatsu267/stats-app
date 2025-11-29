@@ -328,11 +328,8 @@ export default function Quiz() {
     setSessionData(prev => [...prev, { question, isCorrect, timeTaken, chatLog: [] }]);
     currentChatLog.current = [];
     
-    if (!isCorrect) {
-        setWaitingForConfidence(false);
-    } else {
-        setWaitingForConfidence(true);
-    }
+    // ▼▼▼ 修正: 自信度入力（または不正解時の処理）が終わったら必ずfalseにする ▼▼▼
+    setWaitingForConfidence(false);
   };
 
   const saveCurrentChatLog = async () => {
@@ -625,7 +622,6 @@ export default function Quiz() {
         )}
 
       <div className="flex flex-col gap-4 pt-4">
-        {/* Header Section - タグとタイマー */}
         <div className="flex flex-wrap items-center gap-2 mb-1">
              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider border border-gray-700 px-1.5 py-0.5 rounded">
                 {mode === 'mock' ? 'MOCK' : mode === 'ai_rank_match' ? 'RANK' : mode === 'ai_custom' ? 'PRACTICE' : mode === 'role_play' ? 'ROLE' : 'QUIZ'}
@@ -656,7 +652,6 @@ export default function Quiz() {
                 </span>
             )}
             
-            {/* ▼▼▼ 修正: 除外ボタンをタグ列の右端に配置 ▼▼▼ */}
             {(currentQuestion.isCustom && currentQuestion.subcategory) && (
                  <button 
                     onClick={handleBlockTopic} 
@@ -669,7 +664,6 @@ export default function Quiz() {
             )}
         </div>
         
-        {/* Question Number & Controls */}
         <div className="flex items-center justify-between w-full">
              <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
                 Question {currentQuestionIndex + 1}
@@ -721,7 +715,6 @@ export default function Quiz() {
         <div className="max-w-4xl mx-auto flex justify-end gap-3">
           {!isAnswered ? (
             <>
-                {/* ▼▼▼ 修正: hidden sm:inline を削除し、テキストを常に表示 ▼▼▼ */}
                 <button 
                     className="btn px-5 py-3.5 rounded-xl font-bold bg-gray-800/80 text-gray-400 hover:bg-gray-700 hover:text-white border border-gray-700 transition-all active:scale-95 flex items-center justify-center gap-2 flex-shrink-0" 
                     onClick={handleGiveUp}
