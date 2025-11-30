@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Send, User, BrainCircuit, Loader2, Bot, Maximize2, Minimize2 } from 'lucide-react'; // ChevronRightは削除
+import { Send, User, BrainCircuit, Loader2, Bot, Maximize2, Minimize2 } from 'lucide-react'; 
 import { getInitialExplanation, sendChatMessage } from '../../services/ai';
 import { cn } from '../../utils/cn';
 import ReactMarkdown from 'react-markdown';
@@ -9,30 +9,20 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
-// Markdownのスタイル定義（QuestionCardと同じシンプルで見やすいデザインに統一）
 const markdownComponents = {
     p: ({node, children}) => <p className="mb-3 leading-relaxed last:mb-0 text-gray-200">{children}</p>,
-    
-    // 強調表示（QuestionCardと統一）
     strong: ({node, ...props}) => (
         <strong className="font-bold text-amber-200/90 border-b border-amber-500/30 pb-0.5 mx-1" {...props} />
     ),
-    
-    // ▼▼▼ 修正箇所: リスト（ul）を「線」で表現するスタイルに変更 ▼▼▼
     ul: ({node, ...props}) => (
         <ul className="my-3 pl-3 border-l-2 border-gray-600/50 space-y-1" {...props} />
     ),
-    
-    // ▼▼▼ 修正箇所: リスト項目（li）の「箱」を廃止し、シンプルに ▼▼▼
     li: ({node, children, ...props}) => (
         <li className="pl-3 py-0.5 text-sm leading-relaxed relative group" {...props}>
-            {/* 視認性を高めるドット */}
             <span className="absolute left-0 top-2 w-1.5 h-1.5 rounded-full bg-blue-400/60 group-hover:bg-blue-400 transition-colors"></span>
             <div className="text-gray-300">{children}</div>
         </li>
     ),
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-
     table: ({node, ...props}) => (
         <div className="overflow-x-auto my-3 rounded-lg border border-gray-700 bg-gray-900/30">
             <table className="w-full text-left border-collapse text-xs md:text-sm" {...props} />
@@ -43,7 +33,6 @@ const markdownComponents = {
     tr: ({node, ...props}) => <tr className="last:border-0" {...props} />,
     th: ({node, ...props}) => <th className="p-2 font-semibold border-r border-gray-700 last:border-0 whitespace-nowrap text-gray-400" {...props} />,
     td: ({node, ...props}) => <td className="p-2 border-r border-gray-700 last:border-0 text-gray-300" {...props} />,
-    
     code: ({node, inline, className, children, ...props}) => {
         return inline ? (
             <code className="bg-gray-700/50 px-1 py-0.5 rounded text-xs font-mono text-pink-300 border border-gray-600/30" {...props}>
@@ -63,23 +52,42 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
     const [isLoading, setIsLoading] = useState(true);
     const [isExpanded, setIsExpanded] = useState(false);
     const messagesEndRef = useRef(null);
-
-    const scrollToBottom = () => {
-        setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }, 100);
-    };
+    
+    // ▼▼▼ 修正: 参照用のRefを追加 ▼▼▼
+    const chatListRef = useRef(null); // スクロールするコンテナ
+    const messageRefs = useRef({}); // 各メッセージ要素
 
     useEffect(() => {
-        const lastMessage = messages[messages.length - 1];
-        if (lastMessage?.role === 'user' || isLoading) {
-            scrollToBottom();
+        const lastIdx = messages.length - 1;
+        
+        if (lastIdx >= 0) {
+             setTimeout(() => {
+                const container = chatListRef.current;
+                const target = messageRefs.current[lastIdx];
+
+                if (container && target) {
+                    // scrollIntoView() は親要素（ページ全体）までスクロールさせてしまうため使用しない。
+                    // 代わりに、コンテナ内での相対位置を計算して scrollTop を操作する。
+                    const containerRect = container.getBoundingClientRect();
+                    const targetRect = target.getBoundingClientRect();
+                    
+                    // ターゲットの上端とコンテナの上端の差分
+                    const offset = targetRect.top - containerRect.top;
+
+                    // 現在のスクロール位置に差分を足して、ターゲットを上部に持ってくる
+                    // （少し余白を持たせるため -10px）
+                    container.scrollTo({
+                        top: container.scrollTop + offset - 10,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 100);
         }
         
         if (onChatUpdate && messages.length > 0) {
             onChatUpdate(messages);
         }
-    }, [messages, isLoading]);
+    }, [messages]);
 
     useEffect(() => {
         let isMounted = true;
@@ -146,10 +154,15 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth bg-gradient-to-b from-gray-900 to-gray-900/80">
+            {/* ▼▼▼ 修正: ref={chatListRef} を追加し、相対指定 (relative) を付与 ▼▼▼ */}
+            <div 
+                ref={chatListRef}
+                className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth bg-gradient-to-b from-gray-900 to-gray-900/80 relative"
+            >
                 {messages.map((msg, idx) => (
                     <div 
-                        key={idx} 
+                        key={idx}
+                        ref={el => messageRefs.current[idx] = el}
                         className={cn(
                             "flex gap-3 w-full",
                             msg.role === 'user' ? "justify-end" : "justify-start"
@@ -167,7 +180,6 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
                                 ? "bg-gray-700 text-white rounded-tr-sm max-w-[85%]" 
                                 : "bg-gray-800/90 border border-gray-700/50 text-gray-100 rounded-tl-sm flex-1 min-w-0"
                         )}>
-                            {/* ReactMarkdownを使ってリッチに描画 */}
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm, remarkMath]}
                                 rehypePlugins={[rehypeKatex]}

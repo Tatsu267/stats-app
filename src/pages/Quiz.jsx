@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { 
     ArrowRight, CheckCircle, XCircle, Loader2, Sparkles, ArrowLeft, 
     AlertTriangle, Tag, AlertCircle, StopCircle, ThumbsUp, HelpCircle, 
-    AlertOctagon, Trophy, Swords, TrendingDown, Ban
+    AlertOctagon, Trophy, Swords, TrendingDown, Ban, Layers
 } from 'lucide-react';
 import questionsData from '../data/questions.json';
 import QuestionCard from '../components/quiz/QuestionCard';
@@ -42,6 +42,8 @@ export default function Quiz() {
   const [mode, setMode] = useState('random');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
+  const [tempSelectedCategory, setTempSelectedCategory] = useState('');
+  
   const [noticeMessage, setNoticeMessage] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -98,12 +100,11 @@ export default function Quiz() {
     }
   }, [location.state]);
 
-  const fetchNextAiQuestion = async (categoryOrRole, currentMode = mode) => {
+  const fetchNextAiQuestion = async (categoryOrRole, currentMode = mode, specificTopic = null) => {
       setIsGenerating(true);
       try {
           let targetDifficulty = 'Medium';
           let targetCategory = categoryOrRole;
-          let specificTopic = null;
           let isImportant = false;
           
           const currentBlocked = await getBlockedSubcategories();
@@ -120,8 +121,9 @@ export default function Quiz() {
               const availableTopics = IMPORTANT_TOPICS.filter(t => !currentBlocked.includes(t));
               
               if (availableTopics.length > 0 && Math.random() < 0.6) {
-                  specificTopic = availableTopics[Math.floor(Math.random() * availableTopics.length)];
-                  targetCategory = getCategoryByTopic(specificTopic);
+                  const randomTopic = availableTopics[Math.floor(Math.random() * availableTopics.length)];
+                  targetCategory = getCategoryByTopic(randomTopic);
+                  specificTopic = randomTopic; 
                   isImportant = true;
                   console.log(`[Rank Match] Important Topic: ${specificTopic} -> Category: ${targetCategory}`);
               } else {
@@ -132,7 +134,11 @@ export default function Quiz() {
           } else if (currentMode === 'ai_custom') {
               const difficulties = ['Easy', 'Medium', 'Hard'];
               targetDifficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
-              console.log(`[Practice] Category: ${targetCategory} -> Difficulty: ${targetDifficulty} (Random)`);
+              if (specificTopic) {
+                  console.log(`[Practice] Category: ${targetCategory} -> Topic: ${specificTopic}`);
+              } else {
+                  console.log(`[Practice] Category: ${targetCategory} -> Any Topic`);
+              }
           }
 
           let newQuestion;
@@ -156,10 +162,11 @@ export default function Quiz() {
       }
   };
 
-  const startQuiz = async (targetMode = mode, targetCategory = selectedCategory, targetRole = selectedRole) => {
+  const startQuiz = async (targetMode = mode, targetCategory = selectedCategory, targetRole = selectedRole, targetTopic = null) => {
     if (noticeMessage) return;
 
     setMode(targetMode); 
+    if (targetCategory) setSelectedCategory(targetCategory);
 
     const scrollContainer = document.querySelector('main');
     if (scrollContainer) scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
@@ -168,64 +175,73 @@ export default function Quiz() {
     setSessionData([]);
     setTotalSessionExp(0);
 
-    if (targetMode === 'ai_rank_match' || targetMode === 'ai_custom' || targetMode === 'role_play') {
-        try {
-            const param = targetMode === 'role_play' ? targetRole : targetCategory;
-            const q = await fetchNextAiQuestion(param, targetMode); 
-            setQuestions([q]);
-            setQuizPhase('playing');
-            setCurrentQuestionIndex(0);
-            setTimeTaken(0);
-        } catch (error) {
-            setNoticeMessage({ title: "生成エラー", text: "AIが混雑しています。時間を置いて試してください。", type: "error" });
-            setQuizPhase('notice');
+    try {
+        if (targetMode === 'ai_rank_match' || targetMode === 'ai_custom' || targetMode === 'role_play') {
+            try {
+                const param = targetMode === 'role_play' ? targetRole : targetCategory;
+                const q = await fetchNextAiQuestion(param, targetMode, targetTopic); 
+                setQuestions([q]);
+                setQuizPhase('playing');
+                setCurrentQuestionIndex(0);
+                setTimeTaken(0);
+            } catch (error) {
+                setNoticeMessage({ title: "生成エラー", text: "AIが混雑しています。時間を置いて試してください。", type: "error" });
+                setQuizPhase('notice');
+            }
+            return;
         }
-        return;
-    }
 
-    let allQuestions = await getAllQuestions();
-    let filteredQuestions = [...allQuestions];
+        let allQuestions = await getAllQuestions();
+        let filteredQuestions = [...allQuestions];
 
-    if (targetMode === 'mock') {
-        filteredQuestions = [...allQuestions];
-    }
-    else if (targetMode === 'weakness') {
-        const attempts = await db.attempts.toArray();
-        const wrongQuestionIds = new Set(attempts.filter(a => !a.isCorrect).map(a => a.questionId));
-        filteredQuestions = filteredQuestions.filter(q => wrongQuestionIds.has(q.id));
-    } 
-    else if (targetMode === 'review') {
-        const attempts = await db.attempts.toArray();
-        const attemptedIds = new Set(attempts.map(a => a.questionId));
-        filteredQuestions = filteredQuestions.filter(q => attemptedIds.has(q.id));
-        if (targetCategory) filteredQuestions = filteredQuestions.filter(q => q.category === targetCategory);
-    }
-    else if (targetMode === 'srs_review') {
-        const dueIds = await getDueReviewQuestionIds();
-        if (dueIds.length === 0) {
-            setNoticeMessage({ title: "復習完了", text: "今日復習すべき問題はすべて完了しました！", type: "success" });
+        if (targetMode === 'weakness') {
+            const attempts = await db.attempts.toArray();
+            const wrongQuestionIds = new Set(attempts.filter(a => !a.isCorrect).map(a => a.questionId));
+            filteredQuestions = filteredQuestions.filter(q => wrongQuestionIds.has(q.id));
+        } 
+        else if (targetMode === 'review') {
+            const attempts = await db.attempts.toArray();
+            const attemptedIds = new Set(attempts.map(a => a.questionId));
+            filteredQuestions = filteredQuestions.filter(q => attemptedIds.has(q.id));
+            if (targetCategory) filteredQuestions = filteredQuestions.filter(q => q.category === targetCategory);
+        }
+        else if (targetMode === 'srs_review') {
+            const dueIds = await getDueReviewQuestionIds();
+            if (dueIds.length === 0) {
+                setNoticeMessage({ title: "復習完了", text: "今日復習すべき問題はすべて完了しました！", type: "success" });
+                setQuizPhase('notice');
+                return;
+            }
+            const dueIdSet = new Set(dueIds);
+            filteredQuestions = filteredQuestions.filter(q => dueIdSet.has(q.id));
+        }
+
+        if (filteredQuestions.length === 0) {
+            const msg = targetMode === 'weakness' ? '間違えた問題はまだありません。' : targetMode === 'review' ? '復習対象の問題がありません。' : '問題が見つかりませんでした。復習対象の問題が削除された可能性があります。';
+            setNoticeMessage({ title: "該当なし", text: msg, type: "success" });
             setQuizPhase('notice');
             return;
         }
-        const dueIdSet = new Set(dueIds);
-        filteredQuestions = filteredQuestions.filter(q => dueIdSet.has(q.id));
+
+        let selected = filteredQuestions.sort(() => 0.5 - Math.random());
+        if (targetMode === 'mock') selected = selected.slice(0, 5);
+
+        setQuestions(selected);
+        setQuizPhase('playing');
+        setCurrentQuestionIndex(0);
+        setTimeTaken(0);
+        setNoticeMessage(null);
+
+    } catch (e) {
+        console.error("Quiz Error:", e);
+        setNoticeMessage({ title: "エラー", text: "問題の読み込みに失敗しました。", type: "error" });
+        setQuizPhase('notice');
     }
+  };
 
-    if (filteredQuestions.length === 0) {
-      const msg = targetMode === 'weakness' ? '間違えた問題はまだありません。' : targetMode === 'review' ? '復習対象の問題がありません。' : 'このカテゴリの問題は見つかりませんでした。';
-      setNoticeMessage({ title: "該当なし", text: msg, type: "success" });
-      setQuizPhase('notice');
-      return;
-    }
-
-    let selected = filteredQuestions.sort(() => 0.5 - Math.random());
-    if (targetMode === 'mock') selected = selected.slice(0, 5);
-
-    setQuestions(selected);
-    setQuizPhase('playing');
-    setCurrentQuestionIndex(0);
-    setTimeTaken(0);
-    setNoticeMessage(null);
+  const handleCategorySelect = (category) => {
+      setTempSelectedCategory(category);
+      setQuizPhase('subcategory_select');
   };
 
   const handleOptionSelect = (index) => { setSelectedOption(index); };
@@ -286,7 +302,9 @@ export default function Quiz() {
     await updateLearningState(question.id, nextState);
 
     let xpGain = 0;
-    if (mode === 'ai_rank_match') {
+    if (mode === 'ai_custom') {
+        xpGain = 0;
+    } else {
         xpGain = calculateExpGain(question.difficulty || 'Medium', rating);
     }
     
@@ -328,7 +346,6 @@ export default function Quiz() {
     setSessionData(prev => [...prev, { question, isCorrect, timeTaken, chatLog: [] }]);
     currentChatLog.current = [];
     
-    // ▼▼▼ 修正: 自信度入力（または不正解時の処理）が終わったら必ずfalseにする ▼▼▼
     setWaitingForConfidence(false);
   };
 
@@ -385,13 +402,10 @@ export default function Quiz() {
       navigate('/result', { state: { sessionData, totalExp: totalSessionExp } });
   };
 
-  const handleQuit = () => {
-      setShowQuitModal(true);
-  };
-
-  const confirmQuit = async () => {
-      setShowQuitModal(false);
-      finishSession();
+  const handleQuit = async () => {
+      if (window.confirm("演習を終了して結果を見ますか？")) {
+          finishSession();
+      }
   };
 
   const handleFinish = () => { navigate('/'); };
@@ -431,6 +445,7 @@ export default function Quiz() {
   }
   
   if (quizPhase === 'role_select') {
+      // ... (Role Select View) ...
       return (
         <div className="p-4 md:p-8 max-w-4xl mx-auto h-full flex flex-col animate-fade-in pb-24 pt-6">
             <button onClick={() => navigate('/')} className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 w-fit p-2 -ml-2">
@@ -475,53 +490,57 @@ export default function Quiz() {
   }
 
   if (quizPhase === 'category_select') {
+      // ... (Category Select View) ...
+      const isAiMode = mode === 'ai_custom';
       return (
         <div className="p-4 md:p-8 max-w-4xl mx-auto h-full flex flex-col animate-fade-in pb-24 pt-6">
             <button onClick={() => navigate('/')} className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 w-fit p-2 -ml-2">
                 <ArrowLeft size={20} /> <span className="font-bold text-sm">戻る</span>
             </button>
             <h1 className="text-2xl font-bold text-white mb-2 text-center">
-                AI出題：分野を選択
+                {isAiMode ? "AI出題：分野を選択" : "分野を選択"}
             </h1>
             <p className="text-gray-400 text-xs text-center mb-8">
-                AIがその分野の新作問題を作成します
+                {isAiMode ? "AIがその分野の新作問題を作成します" : "各分野の正答率を確認して弱点を補強しましょう"}
             </p>
 
-            <div className="mb-6">
-                <button
-                    onClick={() => startQuiz('ai_rank_match')}
-                    className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-yellow-600 to-orange-600 p-5 text-left shadow-lg shadow-orange-900/20 transition-all active:scale-[0.98] tap-target border-2 border-yellow-400/30 group"
-                >
-                    <div className="absolute top-0 right-0 p-4 opacity-10"><Trophy size={80} className="text-yellow-300" /></div>
-                    <div className="relative z-10 flex items-center gap-4">
-                        <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-inner text-yellow-100">
-                            <Swords size={28} />
+            {isAiMode && (
+                <div className="mb-6">
+                    <button
+                        onClick={() => startQuiz('ai_rank_match')}
+                        className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-yellow-600 to-orange-600 p-5 text-left shadow-lg shadow-orange-900/20 transition-all active:scale-[0.98] tap-target border-2 border-yellow-400/30 group"
+                    >
+                        <div className="absolute top-0 right-0 p-4 opacity-10"><Trophy size={80} className="text-yellow-300" /></div>
+                        <div className="relative z-10 flex items-center gap-4">
+                            <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-inner text-yellow-100">
+                                <Swords size={28} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-white mb-0.5 flex items-center gap-2">
+                                    <span className="whitespace-nowrap">ランクマッチ</span>
+                                    <span className="text-[10px] bg-yellow-500 text-black px-2 py-0.5 rounded font-black whitespace-nowrap">XP獲得</span>
+                                </h3>
+                                <p className="text-orange-100 text-xs font-medium opacity-90">
+                                    レベルに応じた難易度でランダム出題
+                                </p>
+                            </div>
+                            <div className="ml-auto w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-colors">
+                                <ArrowRight className="text-white w-5 h-5" />
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="text-xl font-bold text-white mb-0.5 flex items-center gap-2">
-                                ランクマッチ
-                                <span className="text-[10px] bg-yellow-500 text-black px-2 py-0.5 rounded font-black">XP獲得</span>
-                            </h3>
-                            <p className="text-orange-100 text-xs font-medium opacity-90">
-                                レベルに応じた難易度でランダム出題
-                            </p>
-                        </div>
-                        <div className="ml-auto w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-colors">
-                            <ArrowRight className="text-white w-5 h-5" />
-                        </div>
+                    </button>
+                    <div className="my-6 flex items-center gap-4 before:h-px before:flex-1 before:bg-gray-700 after:h-px after:flex-1 after:bg-gray-700">
+                        <span className="text-xs text-gray-500 font-bold">OR SELECT CATEGORY</span>
                     </div>
-                </button>
-                <div className="my-6 flex items-center gap-4 before:h-px before:flex-1 before:bg-gray-700 after:h-px after:flex-1 after:bg-gray-700">
-                    <span className="text-xs text-gray-500 font-bold">OR SELECT CATEGORY (PRACTICE)</span>
                 </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               {categories.map((cat) => {
                   return (
                     <button
                       key={cat}
-                      onClick={() => startQuiz('ai_custom', cat)}
+                      onClick={() => handleCategorySelect(cat)}
                       className={cn(
                           "relative p-4 rounded-xl text-left transition-all active:scale-95 group tap-target border-2",
                           "bg-gray-800/40 border-gray-700 hover:border-blue-500 hover:bg-gray-800"
@@ -532,7 +551,9 @@ export default function Quiz() {
                             {cat}
                           </span>
                       </div>
-                      <div className="text-xs text-gray-500 mt-2 font-medium">練習モード (XPなし)</div>
+                      {isAiMode && (
+                          <div className="text-xs text-gray-500 mt-2 font-medium">練習モード (XPなし)</div>
+                      )}
                     </button>
                   );
               })}
@@ -541,7 +562,71 @@ export default function Quiz() {
       );
   }
 
-  if (quizPhase === 'setup') return <div className="p-6 md:p-8 animate-fade-in" />;
+  if (quizPhase === 'subcategory_select') {
+      // ... (Subcategory Select View) ...
+      const config = CATEGORY_CONFIG[tempSelectedCategory];
+      const subcategories = config?.subcategories || [];
+      
+      return (
+        <div className="p-4 md:p-8 max-w-4xl mx-auto h-full flex flex-col animate-fade-in pb-24 pt-6">
+             <button 
+                onClick={() => setQuizPhase('category_select')} 
+                className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 w-fit p-2 -ml-2"
+            >
+                <ArrowLeft size={20} /> <span className="font-bold text-sm">戻る</span>
+            </button>
+            
+            <h1 className="text-2xl font-bold text-white mb-2 text-center">{tempSelectedCategory}</h1>
+            <p className="text-gray-400 text-xs text-center mb-8">重点的に学習したいトピックを選択してください</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                    onClick={() => startQuiz('ai_custom', tempSelectedCategory)}
+                    className="p-4 rounded-xl text-left transition-all active:scale-95 border-2 bg-blue-900/20 border-blue-500/50 hover:border-blue-400 hover:bg-blue-900/40 group"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><Layers size={20} /></div>
+                        <div>
+                            <h3 className="text-sm font-bold text-white">この分野全体から出題</h3>
+                            <p className="text-xs text-blue-200/70">ランダムにトピックを選定</p>
+                        </div>
+                    </div>
+                </button>
+
+                {subcategories.map((sub) => {
+                    // ▼▼▼ 修正: 頻出タグの表示判定を追加 ▼▼▼
+                    const isImportant = IMPORTANT_TOPICS.includes(sub);
+                    return (
+                        <button
+                            key={sub}
+                            onClick={() => startQuiz('ai_custom', tempSelectedCategory, null, sub)}
+                            className="p-4 rounded-xl text-left transition-all active:scale-95 border-2 bg-gray-800/40 border-gray-700 hover:border-gray-500 hover:bg-gray-800 group relative overflow-hidden"
+                        >
+                             <div className="flex justify-between items-center gap-2">
+                                 <h3 className="text-sm font-bold text-gray-300 group-hover:text-white">{sub}</h3>
+                                 {/* 頻出タグを表示 */}
+                                 {isImportant && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 shrink-0">
+                                        <TrendingDown size={10} className="rotate-180" />
+                                        頻出
+                                    </span>
+                                 )}
+                             </div>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+      );
+  }
+
+  // 初期状態（ローディング中など）
+  if (quizPhase === 'setup') return (
+    <div className="flex flex-col items-center justify-center h-full p-6">
+        <Loader2 className="animate-spin text-blue-400 mb-4" size={32} />
+        <p className="text-gray-400 text-sm">準備中...</p>
+    </div>
+  );
   
   if (quizPhase === 'finished') {
       return <div className="p-6 text-white text-center">終了</div>; 
@@ -562,6 +647,7 @@ export default function Quiz() {
 
   return (
     <div className="flex flex-col h-full max-w-4xl mx-auto px-4 md:px-8 animate-fade-in pb-24 md:pb-8 relative">
+        {/* ... (Level Up/Down Notification) ... */}
         {levelUpData && (
             <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
                 <div className="animate-bounce bg-yellow-500 text-black px-8 py-4 rounded-2xl shadow-2xl border-4 border-white transform scale-110">
@@ -584,6 +670,7 @@ export default function Quiz() {
             </div>
         )}
 
+        {/* ... (Quit Modal) ... */}
         {showQuitModal && (
             <div className="fixed inset-0 z-[100] flex items-start justify-center px-4 pt-24 animate-fade-in">
                 <div 
@@ -622,6 +709,7 @@ export default function Quiz() {
         )}
 
       <div className="flex flex-col gap-4 pt-4">
+        {/* Header Tags */}
         <div className="flex flex-wrap items-center gap-2 mb-1">
              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider border border-gray-700 px-1.5 py-0.5 rounded">
                 {mode === 'mock' ? 'MOCK' : mode === 'ai_rank_match' ? 'RANK' : mode === 'ai_custom' ? 'PRACTICE' : mode === 'role_play' ? 'ROLE' : 'QUIZ'}
@@ -645,6 +733,7 @@ export default function Quiz() {
                    <Tag size={10} /> {currentQuestion.subcategory}
                 </span>
             )}
+            
             {currentQuestion.isImportant && (
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-rose-500/20 to-pink-600/20 text-rose-300 border border-rose-500/30 animate-pulse shadow-sm shadow-rose-500/10">
                     <TrendingDown size={10} className="rotate-180" />
@@ -655,15 +744,17 @@ export default function Quiz() {
             {(currentQuestion.isCustom && currentQuestion.subcategory) && (
                  <button 
                     onClick={handleBlockTopic} 
-                    className="ml-auto flex-shrink-0 flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded border border-red-500/30 transition-colors text-[10px] font-bold whitespace-nowrap"
+                    className="ml-auto flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-full border border-red-500/30 transition-colors text-xs font-bold whitespace-nowrap"
                     title="この分野を今後出題しない（除外設定）"
                 >
-                     <Ban size={12} />
-                     除外
+                     <Ban size={14} />
+                     <span className="hidden sm:inline">この分野を除外</span>
+                     <span className="inline sm:hidden">除外</span>
                  </button>
             )}
         </div>
         
+        {/* Question Number & Timer */}
         <div className="flex items-center justify-between w-full">
              <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
                 Question {currentQuestionIndex + 1}

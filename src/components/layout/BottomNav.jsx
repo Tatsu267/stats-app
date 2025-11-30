@@ -1,16 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, BarChart2, History, Activity } from 'lucide-react'; // Activity追加
+import { Home, BarChart2, History, Activity, Map } from 'lucide-react'; // Map追加
 
 export default function BottomNav() {
     const navItems = [
         { path: '/', icon: Home, label: 'ホーム' },
+        { path: '/curriculum', icon: Map, label: 'コース' }, // 追加
         { path: '/analysis', icon: BarChart2, label: '分析' },
-        { path: '/statistics', icon: Activity, label: '統計ラボ' }, // 追加
+        { path: '/statistics', icon: Activity, label: 'ラボ' }, // 短縮
         { path: '/review', icon: History, label: '復習' },
     ];
 
-    // ... (残りのコードは変更なし) ...
     return (
         <nav
             className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0F172A]/90 backdrop-blur-xl border-t border-white/10"
@@ -31,7 +31,7 @@ export default function BottomNav() {
                         {({ isActive }) => (
                             <>
                                 <item.icon
-                                    size={20} // 少し小さくして4つ収まりよく
+                                    size={20} 
                                     strokeWidth={isActive ? 2.5 : 2}
                                     className={`transition-all duration-200 ${isActive ? 'scale-110' : ''}`}
                                 />

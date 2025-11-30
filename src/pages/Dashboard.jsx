@@ -40,35 +40,29 @@ export default function Dashboard() {
         return latest ? latest.score : 40;
     }, []);
 
-    // ▼▼▼ 修正: 日別最高スコアの集計ロジック（ソート対応版） ▼▼▼
+    // スコア履歴の取得ロジック
     const scoreHistory = useLiveQuery(async () => {
         const scores = await db.scores.orderBy('timestamp').toArray();
         
         if (!scores || scores.length === 0) return [];
 
-        // 1. 日付ごとの最高スコアを抽出 (キーは YYYY-MM-DD 形式で管理)
         const dailyMaxMap = {};
-        
         scores.forEach(s => {
             const date = new Date(s.timestamp);
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
-            const key = `${year}-${month}-${day}`; // ソート可能な形式
+            const key = `${year}-${month}-${day}`;
 
-            // その日のデータがまだ無い、または既存より高いスコアなら更新
             if (!dailyMaxMap[key] || s.score > dailyMaxMap[key]) {
                 dailyMaxMap[key] = s.score;
             }
         });
 
-        // 2. 日付キーでソートして配列化
         const sortedKeys = Object.keys(dailyMaxMap).sort();
 
-        // 3. 表示用データに変換
         return sortedKeys.map((key, i) => {
             const [year, month, day] = key.split('-');
-            // グラフ表示用の日付 (例: 11/27)
             const displayDate = `${parseInt(month, 10)}/${parseInt(day, 10)}`;
             
             return {
@@ -79,7 +73,6 @@ export default function Dashboard() {
             };
         });
     }, []);
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     const streak = useLiveQuery(async () => {
         const lastAttempt = await db.attempts.orderBy('timestamp').last();
