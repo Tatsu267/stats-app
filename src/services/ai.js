@@ -3,7 +3,7 @@ import { CATEGORY_CONFIG } from '../utils/categories';
 import { ROLES } from '../utils/roles';
 
 // 使用するモデルの優先順位リスト
-const AVAILABLE_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
+const AVAILABLE_MODELS = ["gemini-3-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
 
 // 共通リクエスト処理
 async function callGeminiApi(payload, apiKey) {
