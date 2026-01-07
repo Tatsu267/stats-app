@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Send, User, BrainCircuit, Loader2, Bot, Maximize2, Minimize2 } from 'lucide-react'; 
+import { Send, User, BrainCircuit, Loader2, Bot, Maximize2, Minimize2 } from 'lucide-react';
 import { getInitialExplanation, sendChatMessage } from '../../services/ai';
 import { cn } from '../../utils/cn';
 import ReactMarkdown from 'react-markdown';
@@ -10,30 +10,30 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
 const markdownComponents = {
-    p: ({node, children}) => <p className="mb-3 leading-relaxed last:mb-0 text-gray-200">{children}</p>,
-    strong: ({node, ...props}) => (
+    p: ({ node, children }) => <p className="mb-3 leading-relaxed last:mb-0 text-gray-200">{children}</p>,
+    strong: ({ node, ...props }) => (
         <strong className="font-bold text-amber-200/90 border-b border-amber-500/30 pb-0.5 mx-1" {...props} />
     ),
-    ul: ({node, ...props}) => (
+    ul: ({ node, ...props }) => (
         <ul className="my-3 pl-3 border-l-2 border-gray-600/50 space-y-1" {...props} />
     ),
-    li: ({node, children, ...props}) => (
+    li: ({ node, children, ...props }) => (
         <li className="pl-3 py-0.5 text-sm leading-relaxed relative group" {...props}>
             <span className="absolute left-0 top-2 w-1.5 h-1.5 rounded-full bg-blue-400/60 group-hover:bg-blue-400 transition-colors"></span>
             <div className="text-gray-300">{children}</div>
         </li>
     ),
-    table: ({node, ...props}) => (
+    table: ({ node, ...props }) => (
         <div className="overflow-x-auto my-3 rounded-lg border border-gray-700 bg-gray-900/30">
             <table className="w-full text-left border-collapse text-xs md:text-sm" {...props} />
         </div>
     ),
-    thead: ({node, ...props}) => <thead className="bg-gray-800 text-gray-200" {...props} />,
-    tbody: ({node, ...props}) => <tbody className="divide-y divide-gray-700/50" {...props} />,
-    tr: ({node, ...props}) => <tr className="last:border-0" {...props} />,
-    th: ({node, ...props}) => <th className="p-2 font-semibold border-r border-gray-700 last:border-0 whitespace-nowrap text-gray-400" {...props} />,
-    td: ({node, ...props}) => <td className="p-2 border-r border-gray-700 last:border-0 text-gray-300" {...props} />,
-    code: ({node, inline, className, children, ...props}) => {
+    thead: ({ node, ...props }) => <thead className="bg-gray-800 text-gray-200" {...props} />,
+    tbody: ({ node, ...props }) => <tbody className="divide-y divide-gray-700/50" {...props} />,
+    tr: ({ node, ...props }) => <tr className="last:border-0" {...props} />,
+    th: ({ node, ...props }) => <th className="p-2 font-semibold border-r border-gray-700 last:border-0 whitespace-nowrap text-gray-400" {...props} />,
+    td: ({ node, ...props }) => <td className="p-2 border-r border-gray-700 last:border-0 text-gray-300" {...props} />,
+    code: ({ node, inline, className, children, ...props }) => {
         return inline ? (
             <code className="bg-gray-700/50 px-1 py-0.5 rounded text-xs font-mono text-pink-300 border border-gray-600/30" {...props}>
                 {children}
@@ -52,16 +52,16 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
     const [isLoading, setIsLoading] = useState(true);
     const [isExpanded, setIsExpanded] = useState(false);
     const messagesEndRef = useRef(null);
-    
+
     // ▼▼▼ 修正: 参照用のRefを追加 ▼▼▼
     const chatListRef = useRef(null); // スクロールするコンテナ
     const messageRefs = useRef({}); // 各メッセージ要素
 
     useEffect(() => {
         const lastIdx = messages.length - 1;
-        
+
         if (lastIdx >= 0) {
-             setTimeout(() => {
+            setTimeout(() => {
                 const container = chatListRef.current;
                 const target = messageRefs.current[lastIdx];
 
@@ -70,7 +70,7 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
                     // 代わりに、コンテナ内での相対位置を計算して scrollTop を操作する。
                     const containerRect = container.getBoundingClientRect();
                     const targetRect = target.getBoundingClientRect();
-                    
+
                     // ターゲットの上端とコンテナの上端の差分
                     const offset = targetRect.top - containerRect.top;
 
@@ -83,7 +83,7 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
                 }
             }, 100);
         }
-        
+
         if (onChatUpdate && messages.length > 0) {
             onChatUpdate(messages);
         }
@@ -131,7 +131,7 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
     const ChatContent = (
         <div className={cn(
             "flex flex-col bg-[#0F172A] border border-gray-700 overflow-hidden shadow-2xl transition-all duration-300 ease-in-out",
-            isExpanded 
+            isExpanded
                 ? "fixed inset-0 z-[9999] w-screen h-[100dvh] rounded-none"
                 : "relative w-full h-[500px] rounded-2xl"
         )}>
@@ -142,9 +142,9 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
                     </div>
                     <span className="font-bold text-white text-sm">AI解説チューター</span>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                    <button 
+                    <button
                         onClick={() => setIsExpanded(!isExpanded)}
                         className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition-colors"
                         aria-label={isExpanded ? "縮小" : "全画面"}
@@ -155,12 +155,12 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
             </div>
 
             {/* ▼▼▼ 修正: ref={chatListRef} を追加し、相対指定 (relative) を付与 ▼▼▼ */}
-            <div 
+            <div
                 ref={chatListRef}
                 className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth bg-gradient-to-b from-gray-900 to-gray-900/80 relative"
             >
                 {messages.map((msg, idx) => (
-                    <div 
+                    <div
                         key={idx}
                         ref={el => messageRefs.current[idx] = el}
                         className={cn(
@@ -173,16 +173,16 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
                                 <Bot size={16} className="text-white" />
                             </div>
                         )}
-                        
+
                         <div className={cn(
                             "p-3 md:p-5 rounded-2xl shadow-md overflow-hidden text-sm md:text-base",
-                            msg.role === 'user' 
-                                ? "bg-gray-700 text-white rounded-tr-sm max-w-[85%]" 
+                            msg.role === 'user'
+                                ? "bg-gray-700 text-white rounded-tr-sm max-w-[85%]"
                                 : "bg-gray-800/90 border border-gray-700/50 text-gray-100 rounded-tl-sm flex-1 min-w-0"
                         )}>
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm, remarkMath]}
-                                rehypePlugins={[rehypeKatex]}
+                                rehypePlugins={[[rehypeKatex, { strict: false }]]}
                                 components={markdownComponents}
                             >
                                 {msg.text}
@@ -196,7 +196,7 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
                         )}
                     </div>
                 ))}
-                
+
                 {isLoading && (
                     <div className="flex gap-3 w-full">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg animate-pulse">
@@ -228,7 +228,7 @@ export default function ExplanationChat({ question, selectedOption, correctIndex
                             }
                         }}
                     />
-                    <button 
+                    <button
                         type="submit"
                         disabled={isLoading || !input.trim()}
                         className="p-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-blue-500/20 active:scale-95 flex-shrink-0 h-[50px] w-[50px] flex items-center justify-center"

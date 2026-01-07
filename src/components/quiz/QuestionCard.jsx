@@ -5,7 +5,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { cn } from '../../utils/cn';
 import { CheckCircle2, XCircle } from 'lucide-react';
-import 'katex/dist/katex.min.css'; 
+import 'katex/dist/katex.min.css';
 
 export default function QuestionCard({ question, selectedOption, onSelectOption, isAnswered, correctIndex }) {
     if (!question) {
@@ -13,43 +13,43 @@ export default function QuestionCard({ question, selectedOption, onSelectOption,
     }
 
     const markdownComponents = {
-        p: ({node, children}) => {
+        p: ({ node, children }) => {
             return <p className="mb-4 leading-relaxed text-gray-100">{children}</p>;
         },
-        strong: ({node, ...props}) => (
+        strong: ({ node, ...props }) => (
             <strong className="font-bold text-amber-200/90 border-b border-amber-500/30 pb-0.5 mx-1" {...props} />
         ),
-        ul: ({node, ...props}) => (
+        ul: ({ node, ...props }) => (
             <ul className="my-4 pl-4 border-l-2 border-gray-700 space-y-2" {...props} />
         ),
-        li: ({node, children, ...props}) => (
+        li: ({ node, children, ...props }) => (
             <li className="pl-4 py-1 text-sm md:text-base leading-relaxed relative" {...props}>
                 <span className="absolute left-0 top-2.5 w-1.5 h-1.5 rounded-full bg-blue-500/50"></span>
                 <div className="text-gray-200">{children}</div>
             </li>
         ),
-        table: ({node, ...props}) => (
+        table: ({ node, ...props }) => (
             <div className="overflow-x-auto my-6 rounded border border-gray-700">
                 <table className="w-full text-left border-collapse text-sm" {...props} />
             </div>
         ),
-        thead: ({node, ...props}) => <thead className="bg-gray-800 text-gray-200" {...props} />,
-        tbody: ({node, ...props}) => <tbody className="bg-gray-900/30" {...props} />,
-        tr: ({node, ...props}) => <tr className="border-b border-gray-800 last:border-0" {...props} />,
-        th: ({node, ...props}) => <th className="p-3 font-semibold border-r border-gray-800 last:border-0 whitespace-nowrap text-gray-400" {...props} />,
-        td: ({node, ...props}) => <td className="p-3 border-r border-gray-800 last:border-0" {...props} />,
+        thead: ({ node, ...props }) => <thead className="bg-gray-800 text-gray-200" {...props} />,
+        tbody: ({ node, ...props }) => <tbody className="bg-gray-900/30" {...props} />,
+        tr: ({ node, ...props }) => <tr className="border-b border-gray-800 last:border-0" {...props} />,
+        th: ({ node, ...props }) => <th className="p-3 font-semibold border-r border-gray-800 last:border-0 whitespace-nowrap text-gray-400" {...props} />,
+        td: ({ node, ...props }) => <td className="p-3 border-r border-gray-800 last:border-0" {...props} />,
     };
 
     return (
         <div className="w-full max-w-3xl mx-auto">
             {/* AI生成タグ削除済 */}
-            
+
             {/* 問題文 */}
             <div className="mb-8 px-1">
                 <div className="text-lg md:text-xl leading-8 font-medium text-gray-100 tracking-wide">
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
+                        rehypePlugins={[[rehypeKatex, { strict: false }]]}
                         components={markdownComponents}
                     >
                         {question.text}
@@ -63,7 +63,7 @@ export default function QuestionCard({ question, selectedOption, onSelectOption,
                     question.options.map((option, index) => {
                         const isSelected = selectedOption === index;
                         const isCorrect = index === correctIndex;
-                        
+
                         let containerStyle = "border-gray-800 bg-gray-800/30 hover:bg-gray-800 hover:border-gray-600";
                         let iconColor = "text-gray-600";
                         let textColor = "text-gray-400";
@@ -116,9 +116,9 @@ export default function QuestionCard({ question, selectedOption, onSelectOption,
                                 <div className={cn("text-base flex-1", textColor)}>
                                     <ReactMarkdown
                                         remarkPlugins={[remarkMath]}
-                                        rehypePlugins={[rehypeKatex]}
+                                        rehypePlugins={[[rehypeKatex, { strict: false }]]}
                                         components={{
-                                            p: ({node, children}) => <span className="block">{children}</span>
+                                            p: ({ node, children }) => <span className="block">{children}</span>
                                         }}
                                     >
                                         {option}
