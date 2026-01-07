@@ -3,7 +3,13 @@ import { CATEGORY_CONFIG } from '../utils/categories';
 import { ROLES } from '../utils/roles';
 
 // 使用するモデルの優先順位リスト
-const AVAILABLE_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
+const AVAILABLE_MODELS = [
+    "gemini-3-flash",
+    "gemini-3-flash-preview",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-preview",
+    "gemini-2.0-flash"
+];
 
 // 共通リクエスト処理
 async function callGeminiApi(payload, apiKey) {
@@ -20,12 +26,12 @@ async function callGeminiApi(payload, apiKey) {
 
             if (!response.ok) {
                 const status = response.status;
-                const errorData = await response.json().catch(() => ({})); 
+                const errorData = await response.json().catch(() => ({}));
 
                 if (status === 429 || status === 404 || status === 503) {
                     console.warn(`Model ${model} failed with status ${status}. Switching to next model...`);
                     lastError = new Error(errorData.error?.message || `AI Model ${model} error: ${status}`);
-                    continue; 
+                    continue;
                 }
 
                 throw new Error(errorData.error?.message || "AIエラーが発生しました");
@@ -33,6 +39,7 @@ async function callGeminiApi(payload, apiKey) {
 
             const data = await response.json();
             if (data.candidates && data.candidates.length > 0 && data.candidates[0].content) {
+                console.log(`Successfully used model: ${model}`);
                 return data.candidates[0].content.parts[0].text;
             }
             throw new Error("テキストが生成されませんでした");
@@ -53,10 +60,10 @@ export async function getInitialExplanation(question, selectedOptionIndex, corre
     if (!apiKey) throw new Error("APIキーを設定してください");
 
     const options = Array.isArray(question.options) ? question.options : [];
-    const selectedOption = selectedOptionIndex === -1 
-        ? "回答なし（わからない）" 
+    const selectedOption = selectedOptionIndex === -1
+        ? "回答なし（わからない）"
         : (options[selectedOptionIndex] || "不明");
-        
+
     const correctOption = options[correctOptionIndex] || "不明";
 
     // ▼▼▼ 修正: 禁止事項を追加し、コードブロックの使用を抑制 ▼▼▼
@@ -98,7 +105,7 @@ export async function getInitialExplanation(question, selectedOptionIndex, corre
 export async function sendChatMessage(history, newMessage) {
     const apiKey = await getApiKey();
     if (!apiKey) throw new Error("APIキーを設定してください");
-    
+
     // ▼▼▼ 修正: チャットでもコードブロック禁止をリマインド ▼▼▼
     const reminder = `
     (挨拶不要。以下のルールを守ってください)
@@ -128,7 +135,7 @@ export async function generateAiQuestion(category, difficulty = 'Medium', specif
     } else {
         const subcategories = CATEGORY_CONFIG[category]?.subcategories || [];
         const availableSubcategories = subcategories.filter(sub => !excludedSubcategories.includes(sub));
-        
+
         if (availableSubcategories.length > 0) {
             randomSub = availableSubcategories[Math.floor(Math.random() * availableSubcategories.length)];
         } else if (subcategories.length > 0) {
@@ -166,15 +173,15 @@ export async function generateAiQuestion(category, difficulty = 'Medium', specif
 
     const jsonString = await callGeminiApi({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { 
+        generationConfig: {
             temperature: 1.0,
-            response_mime_type: "application/json" 
+            response_mime_type: "application/json"
         }
     }, apiKey);
 
     try {
         let result = JSON.parse(jsonString);
-        
+
         if (Array.isArray(result)) {
             if (result.length === 0) throw new Error("AIが空のデータを返しました");
             result = result[0];
@@ -184,14 +191,14 @@ export async function generateAiQuestion(category, difficulty = 'Medium', specif
             result.text = result.text
                 .replace(/\\n/g, '\n')
                 .replace(/\\\*\\\*/g, '**')
-                .replace(/\\textbf\{(.+?)\}/g, '**$1**'); 
+                .replace(/\\textbf\{(.+?)\}/g, '**$1**');
         }
 
         if (Array.isArray(result.options)) {
-            result.options = result.options.map(opt => 
+            result.options = result.options.map(opt =>
                 opt.replace(/\\n/g, '\n')
-                   .replace(/\\\*\\\*/g, '**')
-                   .replace(/\\textbf\{(.+?)\}/g, '**$1**')
+                    .replace(/\\\*\\\*/g, '**')
+                    .replace(/\\textbf\{(.+?)\}/g, '**$1**')
             );
         }
 
@@ -216,7 +223,7 @@ export async function generateRolePlayQuestion(roleId, difficulty = 'Medium') {
     if (!role) throw new Error("無効なロールIDです。");
 
     const focusTopics = role.focus ? role.focus.split('、') : [];
-    const randomTopic = focusTopics.length > 0 
+    const randomTopic = focusTopics.length > 0
         ? focusTopics[Math.floor(Math.random() * focusTopics.length)]
         : "";
 
@@ -258,15 +265,15 @@ export async function generateRolePlayQuestion(roleId, difficulty = 'Medium') {
 
     const jsonString = await callGeminiApi({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { 
+        generationConfig: {
             temperature: 1.0,
-            response_mime_type: "application/json" 
+            response_mime_type: "application/json"
         }
     }, apiKey);
 
     try {
         let result = JSON.parse(jsonString);
-        
+
         if (Array.isArray(result)) {
             if (result.length === 0) throw new Error("AIが空のデータを返しました");
             result = result[0];
@@ -276,14 +283,14 @@ export async function generateRolePlayQuestion(roleId, difficulty = 'Medium') {
             result.text = result.text
                 .replace(/\\n/g, '\n')
                 .replace(/\\\*\\\*/g, '**')
-                .replace(/\\textbf\{(.+?)\}/g, '**$1**'); 
+                .replace(/\\textbf\{(.+?)\}/g, '**$1**');
         }
 
         if (Array.isArray(result.options)) {
-            result.options = result.options.map(opt => 
+            result.options = result.options.map(opt =>
                 opt.replace(/\\n/g, '\n')
-                   .replace(/\\\*\\\*/g, '**')
-                   .replace(/\\textbf\{(.+?)\}/g, '**$1**')
+                    .replace(/\\\*\\\*/g, '**')
+                    .replace(/\\textbf\{(.+?)\}/g, '**$1**')
             );
         }
 
@@ -337,6 +344,6 @@ export async function generateSessionFeedback(sessionData) {
     }, apiKey);
 
     return text
-        .replace(/\\\*\\\*/g, '**') 
+        .replace(/\\\*\\\*/g, '**')
         .replace(/__(.*?)__/g, '**$1**');
 }
