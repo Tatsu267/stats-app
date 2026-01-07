@@ -627,6 +627,52 @@ export default function Quiz() {
         );
     }
 
+    if (quizPhase === 'difficulty_select') {
+        const difficulties = [
+            { id: 'Easy', name: '初級 (Easy)', desc: '基本概念の確認に最適', color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/30' },
+            { id: 'Medium', name: '中級 (Medium)', desc: '実践的な応用力を養う', color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30' },
+            { id: 'Hard', name: '上級 (Hard)', desc: '複雑な論点や高度な分析', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' }
+        ];
+
+        return (
+            <div className="p-4 md:p-8 max-w-4xl mx-auto h-full flex flex-col animate-fade-in pb-24 pt-6">
+                <button
+                    onClick={() => setQuizPhase('subcategory_select')}
+                    className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 w-fit p-2 -ml-2"
+                >
+                    <ArrowLeft size={20} /> <span className="font-bold text-sm">戻る</span>
+                </button>
+
+                <h1 className="text-2xl font-bold text-white mb-2 text-center">難易度を選択</h1>
+                <p className="text-gray-400 text-xs text-center mb-8">
+                    {tempSelectedCategory}{tempSelectedTopic ? ` > ${tempSelectedTopic}` : ''}
+                </p>
+
+                <div className="grid grid-cols-1 gap-4 max-w-md mx-auto w-full">
+                    {difficulties.map((diff) => (
+                        <button
+                            key={diff.id}
+                            onClick={() => handleDifficultySelect(diff.id)}
+                            className={cn(
+                                "p-6 rounded-2xl text-left transition-all active:scale-95 border-2 group relative overflow-hidden",
+                                "bg-gray-800/40 border-gray-700 hover:bg-gray-800",
+                                `hover:${diff.border}`
+                            )}
+                        >
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h3 className={cn("text-lg font-bold mb-1", diff.color)}>{diff.name}</h3>
+                                    <p className="text-xs text-gray-400">{diff.desc}</p>
+                                </div>
+                                <ArrowRight className="text-gray-600 group-hover:text-white transition-colors" />
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     // 初期状態（ローディング中など）
     if (quizPhase === 'setup') return (
         <div className="flex flex-col items-center justify-center h-full p-6">
