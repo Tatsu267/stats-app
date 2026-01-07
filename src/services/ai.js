@@ -4,10 +4,8 @@ import { ROLES } from '../utils/roles';
 
 // 使用するモデルの優先順位リスト
 const AVAILABLE_MODELS = [
-    "gemini-3-flash",
     "gemini-3-flash-preview",
     "gemini-2.5-flash",
-    "gemini-2.5-flash-preview",
     "gemini-2.0-flash"
 ];
 

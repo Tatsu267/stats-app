@@ -102,7 +102,7 @@ export default function Quiz() {
         }
     }, [location.state]);
 
-    const fetchNextAiQuestion = async (categoryOrRole, currentMode = mode, specificTopic = null) => {
+    const fetchNextAiQuestion = async (categoryOrRole, currentMode = mode, specificTopic = null, specificDifficulty = null) => {
         setIsGenerating(true);
         try {
             let targetDifficulty = 'Medium';
@@ -134,7 +134,7 @@ export default function Quiz() {
                 }
 
             } else if (currentMode === 'ai_custom') {
-                targetDifficulty = selectedDifficulty || 'Medium';
+                targetDifficulty = specificDifficulty || selectedDifficulty || 'Medium';
                 if (specificTopic) {
                     console.log(`[Practice] Category: ${targetCategory} -> Topic: ${specificTopic} -> Difficulty: ${targetDifficulty}`);
                 } else {
@@ -163,7 +163,7 @@ export default function Quiz() {
         }
     };
 
-    const startQuiz = async (targetMode = mode, targetCategory = selectedCategory, targetRole = selectedRole, targetTopic = null) => {
+    const startQuiz = async (targetMode = mode, targetCategory = selectedCategory, targetRole = selectedRole, targetTopic = null, targetDifficulty = null) => {
         if (noticeMessage) return;
 
         setMode(targetMode);
@@ -181,7 +181,7 @@ export default function Quiz() {
             if (targetMode === 'ai_rank_match' || targetMode === 'ai_custom' || targetMode === 'role_play') {
                 try {
                     const param = targetMode === 'role_play' ? targetRole : targetCategory;
-                    const q = await fetchNextAiQuestion(param, targetMode, targetTopic);
+                    const q = await fetchNextAiQuestion(param, targetMode, targetTopic, targetDifficulty);
                     setQuestions([q]);
                     setQuizPhase('playing');
                     setCurrentQuestionIndex(0);
@@ -253,7 +253,7 @@ export default function Quiz() {
 
     const handleDifficultySelect = (diff) => {
         setSelectedDifficulty(diff);
-        startQuiz('ai_custom', tempSelectedCategory, null, tempSelectedTopic);
+        startQuiz('ai_custom', tempSelectedCategory, null, tempSelectedTopic, diff);
     };
 
     const handleOptionSelect = (index) => { setSelectedOption(index); };
