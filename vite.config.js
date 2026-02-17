@@ -1,18 +1,19 @@
-import { defineConfig } from 'vite'
+﻿import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'StatsGrade1 - 統計検定準1級対策',
+        name: 'StatsGrade1 - Statistics Study App',
         short_name: 'StatsGrade1',
-        description: '統計検定準1級取得に向けた学習アプリ',
+        description: 'Statistics study app for Grade 1 preparation',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
@@ -22,16 +23,16 @@ export default defineConfig({
             src: 'pwa-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable' // ← これを追加！
+            purpose: 'any maskable',
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable' // ← これを追加！
-          }
-        ]
-      }
-    })
+            purpose: 'any maskable',
+          },
+        ],
+      },
+    }),
   ],
 })
