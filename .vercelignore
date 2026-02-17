@@ -1,0 +1,11 @@
+node_modules
+release
+dist
+electron
+scripts
+docs
+.git
+.env
+.env.*
+*.log
+*.txt
