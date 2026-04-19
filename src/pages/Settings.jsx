@@ -323,7 +323,7 @@ export default function Settings() {
             AI設定
           </h2>
 
-          <label className="block text-sm font-medium text-gray-400 mb-2">OpenAI / Gemini API Key</label>
+          <label className="block text-sm font-medium text-gray-400 mb-2">Gemini API Key</label>
           <input
             type="password"
             value={apiKey}

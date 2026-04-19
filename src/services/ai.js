@@ -9,6 +9,17 @@ const AVAILABLE_MODELS = [
     "gemini-2.0-flash"
 ];
 
+function getValidatedGeminiApiKey(rawApiKey) {
+    const apiKey = String(rawApiKey ?? "").trim();
+    if (!apiKey) {
+        throw new Error("Gemini APIキーを設定してください。");
+    }
+    if (apiKey.startsWith("sk-")) {
+        throw new Error("OpenAIのAPIキーは使えません。Gemini APIキーを設定してください。");
+    }
+    return apiKey;
+}
+
 // 共通リクエスト処理
 async function callGeminiApi(payload, apiKey) {
     let lastError = null;
@@ -54,7 +65,7 @@ async function callGeminiApi(payload, apiKey) {
 
 // 解説生成
 export async function getInitialExplanation(question, selectedOptionIndex, correctOptionIndex) {
-    const apiKey = await getApiKey();
+    const apiKey = getValidatedGeminiApiKey(await getApiKey());
     if (!apiKey) throw new Error("APIキーを設定してください");
 
     const options = Array.isArray(question.options) ? question.options : [];
@@ -102,7 +113,7 @@ export async function getInitialExplanation(question, selectedOptionIndex, corre
 
 // チャット応答
 export async function sendChatMessage(history, newMessage) {
-    const apiKey = await getApiKey();
+    const apiKey = getValidatedGeminiApiKey(await getApiKey());
     if (!apiKey) throw new Error("APIキーを設定してください");
 
     // ▼▼▼ 修正: チャットでもコードブロック禁止をリマインド ▼▼▼
@@ -127,7 +138,7 @@ export async function sendChatMessage(history, newMessage) {
 
 // 通常のAI問題生成
 export async function generateAiQuestion(category, difficulty = 'Medium', specificTopic = null, excludedSubcategories = []) {
-    const apiKey = await getApiKey();
+    const apiKey = getValidatedGeminiApiKey(await getApiKey());
     if (!apiKey) throw new Error("APIキーが設定されていません。");
 
     let randomSub = category;
@@ -218,7 +229,7 @@ export async function generateAiQuestion(category, difficulty = 'Medium', specif
 
 // ロールプレイ問題生成
 export async function generateRolePlayQuestion(roleId, difficulty = 'Medium') {
-    const apiKey = await getApiKey();
+    const apiKey = getValidatedGeminiApiKey(await getApiKey());
     if (!apiKey) throw new Error("APIキーが設定されていません。");
 
     const role = ROLES[roleId];
@@ -311,7 +322,7 @@ export async function generateRolePlayQuestion(roleId, difficulty = 'Medium') {
 
 // 総括生成
 export async function generateSessionFeedback(sessionData) {
-    const apiKey = await getApiKey();
+    const apiKey = getValidatedGeminiApiKey(await getApiKey());
     if (!apiKey) return "APIキーが設定されていないため、分析を実行できません。";
 
     const summary = sessionData.map((item, i) => ({

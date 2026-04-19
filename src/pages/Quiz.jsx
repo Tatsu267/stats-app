@@ -187,7 +187,7 @@ export default function Quiz() {
                     setCurrentQuestionIndex(0);
                     setTimeTaken(0);
                 } catch (error) {
-                    setNoticeMessage({ title: "生成エラー", text: "AIが混雑しています。時間を置いて試してください。", type: "error" });
+                    setNoticeMessage({ title: "生成エラー", text: error?.message || "問題の生成に失敗しました。", type: "error" });
                     setQuizPhase('notice');
                 }
                 return;
@@ -387,7 +387,7 @@ export default function Quiz() {
                 setQuestions(prev => [...prev, nextQ]);
                 setCurrentQuestionIndex(prev => prev + 1);
             } catch (e) {
-                setNoticeMessage({ title: "生成エラー", text: "問題の生成に失敗しました。", type: "error" });
+                setNoticeMessage({ title: "生成エラー", text: e?.message || "問題の生成に失敗しました。", type: "error" });
                 setQuizPhase('notice');
             }
             return;
