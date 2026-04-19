@@ -151,7 +151,7 @@ export default function Quiz() {
         }
     };
 
-    const startQuiz = async (targetMode = mode, targetCategory = selectedCategory, targetRole = selectedRole, targetTopic = null, targetDifficulty = null) => {
+    const startQuiz = async (targetMode = mode, targetCategory = selectedCategory, targetTopic = null, targetDifficulty = null) => {
         if (noticeMessage) return;
 
         setMode(targetMode);
