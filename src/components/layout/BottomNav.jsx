@@ -1,14 +1,14 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, BarChart2, History, Activity, Map } from 'lucide-react'; // Map追加
+import { BarChart2, GraduationCap, History, Home, Map } from 'lucide-react';
 
 export default function BottomNav() {
     const navItems = [
         { path: '/', icon: Home, label: 'ホーム' },
-        { path: '/curriculum', icon: Map, label: 'コース' }, // 追加
+        { path: '/curriculum', icon: Map, label: 'コース' },
         { path: '/analysis', icon: BarChart2, label: '分析' },
-        { path: '/statistics', icon: Activity, label: 'ラボ' }, // 短縮
         { path: '/review', icon: History, label: '復習' },
+        { path: '/tutor', icon: GraduationCap, label: '家庭教師' },
     ];
 
     return (

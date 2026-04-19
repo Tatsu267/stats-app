@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
-    ArrowRight, CheckCircle, XCircle, Loader2, Sparkles, ArrowLeft,
+    ArrowRight, CheckCircle, Loader2, Sparkles, ArrowLeft,
     AlertTriangle, Tag, AlertCircle, StopCircle, ThumbsUp, HelpCircle,
-    AlertOctagon, Trophy, Swords, TrendingDown, Ban, Layers
+    AlertOctagon, Trophy, Swords, TrendingDown, Ban
 } from 'lucide-react';
 import questionsData from '../data/questions.json';
 import QuestionCard from '../components/quiz/QuestionCard';
@@ -19,11 +19,10 @@ import {
 } from '../services/db';
 import { calculateNextReview, SRS_RATINGS } from '../utils/srs';
 import { calculateExpGain, getNextLevelExp, getDifficultyDistribution } from '../utils/leveling';
-import { generateAiQuestion, generateRolePlayQuestion } from '../services/ai';
+import { generateAiQuestion } from '../services/ai';
 import { cn } from '../utils/cn';
-import { CATEGORY_NAMES, CATEGORY_CONFIG, IMPORTANT_TOPICS, getCategoryByTopic } from '../utils/categories';
+import { CATEGORY_NAMES, IMPORTANT_TOPICS, getCategoryByTopic } from '../utils/categories';
 import { getAllQuestions, CUSTOM_PREFIX } from '../utils/questionManager';
-import { ROLES, ROLE_IDS } from '../utils/roles';
 
 export default function Quiz() {
     const navigate = useNavigate();
@@ -41,7 +40,6 @@ export default function Quiz() {
 
     const [mode, setMode] = useState('random');
     const [selectedCategory, setSelectedCategory] = useState('');
-    const [selectedRole, setSelectedRole] = useState('');
     const [tempSelectedCategory, setTempSelectedCategory] = useState('');
     const [selectedDifficulty, setSelectedDifficulty] = useState('Medium');
     const [tempSelectedTopic, setTempSelectedTopic] = useState(null);
@@ -86,11 +84,6 @@ export default function Quiz() {
 
         if (location.state) {
             const { mode: initialMode, category, start } = location.state;
-            if (initialMode === 'role_play_select') {
-                setMode('role_play');
-                setQuizPhase('role_select');
-                return;
-            }
             if (initialMode === 'ai_custom_select') {
                 setMode('ai_custom');
                 setQuizPhase('category_select');
@@ -142,12 +135,7 @@ export default function Quiz() {
                 }
             }
 
-            let newQuestion;
-            if (currentMode === 'role_play') {
-                newQuestion = await generateRolePlayQuestion(categoryOrRole, targetDifficulty);
-            } else {
-                newQuestion = await generateAiQuestion(targetCategory, targetDifficulty, specificTopic, currentBlocked);
-            }
+            const newQuestion = await generateAiQuestion(targetCategory, targetDifficulty, specificTopic, currentBlocked);
 
             const id = await addCustomQuestion(newQuestion);
             newQuestion.id = `${CUSTOM_PREFIX}${id}`;
@@ -178,9 +166,9 @@ export default function Quiz() {
         setTotalSessionExp(0);
 
         try {
-            if (targetMode === 'ai_rank_match' || targetMode === 'ai_custom' || targetMode === 'role_play') {
+            if (targetMode === 'ai_rank_match' || targetMode === 'ai_custom') {
                 try {
-                    const param = targetMode === 'role_play' ? targetRole : targetCategory;
+                    const param = targetCategory;
                     const q = await fetchNextAiQuestion(param, targetMode, targetTopic, targetDifficulty);
                     setQuestions([q]);
                     setQuizPhase('playing');
@@ -196,7 +184,10 @@ export default function Quiz() {
             let allQuestions = await getAllQuestions();
             let filteredQuestions = [...allQuestions];
 
-            if (targetMode === 'weakness') {
+            if (targetMode === 'foundation') {
+                filteredQuestions = filteredQuestions.filter(q => q.category === '基礎補修');
+            }
+            else if (targetMode === 'weakness') {
                 const attempts = await db.attempts.toArray();
                 const wrongQuestionIds = new Set(attempts.filter(a => !a.isCorrect).map(a => a.questionId));
                 filteredQuestions = filteredQuestions.filter(q => wrongQuestionIds.has(q.id));
@@ -242,18 +233,7 @@ export default function Quiz() {
     };
 
     const handleCategorySelect = (category) => {
-        setTempSelectedCategory(category);
-        setQuizPhase('subcategory_select');
-    };
-
-    const handleSubcategorySelect = (topic) => {
-        setTempSelectedTopic(topic);
-        setQuizPhase('difficulty_select');
-    };
-
-    const handleDifficultySelect = (diff) => {
-        setSelectedDifficulty(diff);
-        startQuiz('ai_custom', tempSelectedCategory, null, tempSelectedTopic, diff);
+        startQuiz('ai_custom', category);
     };
 
     const handleOptionSelect = (index) => { setSelectedOption(index); };
@@ -376,13 +356,13 @@ export default function Quiz() {
         if (scrollContainer) scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
         else window.scrollTo({ top: 0, behavior: 'smooth' });
 
-        if (mode === 'ai_rank_match' || mode === 'ai_custom' || mode === 'role_play') {
+        if (mode === 'ai_rank_match' || mode === 'ai_custom') {
             setSelectedOption(null);
             setIsAnswered(false);
             setWaitingForConfidence(false);
             setTimeTaken(0);
             try {
-                const param = mode === 'role_play' ? selectedRole : (mode === 'ai_custom' ? selectedCategory : null);
+                const param = mode === 'ai_custom' ? selectedCategory : null;
                 const nextQ = await fetchNextAiQuestion(param, mode, mode === 'ai_custom' ? tempSelectedTopic : null);
                 setQuestions(prev => [...prev, nextQ]);
                 setCurrentQuestionIndex(prev => prev + 1);
@@ -446,51 +426,6 @@ export default function Quiz() {
                     <h2 className="text-xl font-bold text-white mb-2">{noticeMessage.title}</h2>
                     <p className="text-gray-400 mb-6">{noticeMessage.text}</p>
                     <button onClick={() => navigate('/')} className="btn w-full bg-gray-700 hover:bg-gray-600 text-white rounded-xl">ダッシュボードに戻る</button>
-                </div>
-            </div>
-        );
-    }
-
-    if (quizPhase === 'role_select') {
-        // ... (Role Select View) ...
-        return (
-            <div className="p-4 md:p-8 max-w-4xl mx-auto h-full flex flex-col animate-fade-in pb-24 pt-6">
-                <button onClick={() => navigate('/')} className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 w-fit p-2 -ml-2">
-                    <ArrowLeft size={20} /> <span className="font-bold text-sm">戻る</span>
-                </button>
-                <h1 className="text-2xl font-bold text-white mb-2 text-center">役割（ロール）を選択</h1>
-                <div className="grid gap-4 mt-6">
-                    {ROLE_IDS.map((roleId) => {
-                        const role = ROLES[roleId];
-                        return (
-                            <button
-                                key={roleId}
-                                onClick={() => {
-                                    setSelectedRole(roleId);
-                                    startQuiz('role_play', '', roleId);
-                                }}
-                                className={cn(
-                                    "relative p-5 rounded-xl text-left transition-all active:scale-95 group tap-target border-2 flex items-start gap-4",
-                                    role.bg, role.border, "hover:bg-opacity-30"
-                                )}
-                            >
-                                <div className={cn("p-3 rounded-lg bg-black/20", role.color)}>
-                                    <role.icon size={24} />
-                                </div>
-                                <div>
-                                    <h3 className={cn("text-lg font-bold mb-1", role.color)}>{role.name}</h3>
-                                    <p className="text-xs text-gray-300 leading-relaxed mb-2">{role.description}</p>
-                                    <div className="flex items-center gap-1 text-[10px] text-gray-400 opacity-80">
-                                        <Tag size={10} />
-                                        <span>{role.focus}</span>
-                                    </div>
-                                </div>
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <ArrowRight className={role.color} />
-                                </div>
-                            </button>
-                        );
-                    })}
                 </div>
             </div>
         );
@@ -569,110 +504,6 @@ export default function Quiz() {
         );
     }
 
-    if (quizPhase === 'subcategory_select') {
-        // ... (Subcategory Select View) ...
-        const config = CATEGORY_CONFIG[tempSelectedCategory];
-        const subcategories = config?.subcategories || [];
-
-        return (
-            <div className="p-4 md:p-8 max-w-4xl mx-auto h-full flex flex-col animate-fade-in pb-24 pt-6">
-                <button
-                    onClick={() => setQuizPhase('category_select')}
-                    className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 w-fit p-2 -ml-2"
-                >
-                    <ArrowLeft size={20} /> <span className="font-bold text-sm">戻る</span>
-                </button>
-
-                <h1 className="text-2xl font-bold text-white mb-2 text-center">{tempSelectedCategory}</h1>
-                <p className="text-gray-400 text-xs text-center mb-8">重点的に学習したいトピックを選択してください</p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                        onClick={() => handleSubcategorySelect(null)}
-                        className="p-4 rounded-xl text-left transition-all active:scale-95 border-2 bg-blue-900/20 border-blue-500/50 hover:border-blue-400 hover:bg-blue-900/40 group"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><Layers size={20} /></div>
-                            <div>
-                                <h3 className="text-sm font-bold text-white">この分野全体から出題</h3>
-                                <p className="text-xs text-blue-200/70">ランダムにトピックを選定</p>
-                            </div>
-                        </div>
-                    </button>
-
-                    {subcategories.map((sub) => {
-                        // ▼▼▼ 修正: 頻出タグの表示判定を追加 ▼▼▼
-                        const isImportant = IMPORTANT_TOPICS.includes(sub);
-                        return (
-                            <button
-                                key={sub}
-                                onClick={() => handleSubcategorySelect(sub)}
-                                className="p-4 rounded-xl text-left transition-all active:scale-95 border-2 bg-gray-800/40 border-gray-700 hover:border-gray-500 hover:bg-gray-800 group relative overflow-hidden"
-                            >
-                                <div className="flex justify-between items-center gap-2">
-                                    <h3 className="text-sm font-bold text-gray-300 group-hover:text-white">{sub}</h3>
-                                    {/* 頻出タグを表示 */}
-                                    {isImportant && (
-                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 shrink-0">
-                                            <TrendingDown size={10} className="rotate-180" />
-                                            頻出
-                                        </span>
-                                    )}
-                                </div>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-    }
-
-    if (quizPhase === 'difficulty_select') {
-        const difficulties = [
-            { id: 'Easy', name: '初級 (Easy)', desc: '基本概念の確認に最適', color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/30' },
-            { id: 'Medium', name: '中級 (Medium)', desc: '実践的な応用力を養う', color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30' },
-            { id: 'Hard', name: '上級 (Hard)', desc: '複雑な論点や高度な分析', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' }
-        ];
-
-        return (
-            <div className="p-4 md:p-8 max-w-4xl mx-auto h-full flex flex-col animate-fade-in pb-24 pt-6">
-                <button
-                    onClick={() => setQuizPhase('subcategory_select')}
-                    className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 w-fit p-2 -ml-2"
-                >
-                    <ArrowLeft size={20} /> <span className="font-bold text-sm">戻る</span>
-                </button>
-
-                <h1 className="text-2xl font-bold text-white mb-2 text-center">難易度を選択</h1>
-                <p className="text-gray-400 text-xs text-center mb-8">
-                    {tempSelectedCategory}{tempSelectedTopic ? ` > ${tempSelectedTopic}` : ''}
-                </p>
-
-                <div className="grid grid-cols-1 gap-4 max-w-md mx-auto w-full">
-                    {difficulties.map((diff) => (
-                        <button
-                            key={diff.id}
-                            onClick={() => handleDifficultySelect(diff.id)}
-                            className={cn(
-                                "p-6 rounded-2xl text-left transition-all active:scale-95 border-2 group relative overflow-hidden",
-                                "bg-gray-800/40 border-gray-700 hover:bg-gray-800",
-                                `hover:${diff.border}`
-                            )}
-                        >
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <h3 className={cn("text-lg font-bold mb-1", diff.color)}>{diff.name}</h3>
-                                    <p className="text-xs text-gray-400">{diff.desc}</p>
-                                </div>
-                                <ArrowRight className="text-gray-600 group-hover:text-white transition-colors" />
-                            </div>
-                        </button>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
     // 初期状態（ローディング中など）
     if (quizPhase === 'setup') return (
         <div className="flex flex-col items-center justify-center h-full p-6">
@@ -696,8 +527,6 @@ export default function Quiz() {
         );
     }
 
-    const roleInfo = currentQuestion.role ? ROLES[currentQuestion.role] : null;
-
     return (
         <div className="flex flex-col h-full max-w-4xl mx-auto px-4 md:px-8 animate-fade-in pb-24 md:pb-8 relative">
             {/* ... (Level Up/Down Notification) ... */}
@@ -713,12 +542,9 @@ export default function Quiz() {
             )}
 
             {levelDownData && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-                    <div className="animate-pulse bg-red-600 text-white px-8 py-4 rounded-2xl shadow-2xl border-4 border-red-400 transform scale-110">
-                        <h3 className="text-3xl font-black flex items-center gap-2">
-                            <TrendingDown size={32} /> RANK DOWN...
-                        </h3>
-                        <p className="text-center font-bold text-lg mt-1">Lv.{levelDownData.level}</p>
+                <div className="fixed bottom-24 right-4 z-50 pointer-events-none animate-fade-in">
+                    <div className="bg-gray-800 text-gray-300 px-4 py-2 rounded-xl shadow-lg border border-gray-700 text-sm font-bold">
+                        Lv.{levelDownData.level} になりました
                     </div>
                 </div>
             )}
@@ -765,13 +591,8 @@ export default function Quiz() {
                 {/* Header Tags */}
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider border border-gray-700 px-1.5 py-0.5 rounded">
-                        {mode === 'mock' ? 'MOCK' : mode === 'ai_rank_match' ? 'RANK' : mode === 'ai_custom' ? 'PRACTICE' : mode === 'role_play' ? 'ROLE' : 'QUIZ'}
+                        {mode === 'mock' ? 'MOCK' : mode === 'ai_rank_match' ? 'RANK' : mode === 'ai_custom' ? 'PRACTICE' : 'QUIZ'}
                     </span>
-                    {roleInfo && (
-                        <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-1", roleInfo.bg, roleInfo.border, roleInfo.color)}>
-                            <roleInfo.icon size={10} /> {roleInfo.name}
-                        </span>
-                    )}
                     {currentQuestion.difficulty && (
                         <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border",
                             currentQuestion.difficulty === 'Easy' ? "text-green-400 border-green-500/30 bg-green-500/10" :
@@ -811,7 +632,7 @@ export default function Quiz() {
                 <div className="flex items-center justify-between w-full">
                     <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
                         Question {currentQuestionIndex + 1}
-                        <span className="text-base font-normal text-gray-500">/ {(mode === 'ai_custom' || mode === 'role_play' || mode === 'ai_rank_match') ? '∞' : questions.length}</span>
+                        <span className="text-base font-normal text-gray-500">/ {(mode === 'ai_custom' || mode === 'ai_rank_match') ? '∞' : questions.length}</span>
                     </h1>
 
                     <div className="flex items-center gap-3">
@@ -828,7 +649,7 @@ export default function Quiz() {
             </div>
 
             <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden mb-6">
-                <div className={cn("h-full transition-all duration-500 ease-out", mode === 'mock' ? "bg-gradient-to-r from-teal-500 to-emerald-500" : "bg-gradient-to-r from-blue-500 to-purple-500")} style={{ width: (mode === 'ai_custom' || mode === 'role_play' || mode === 'ai_rank_match') ? '100%' : `${((currentQuestionIndex + 1) / questions.length) * 100}%` }} />
+                <div className={cn("h-full transition-all duration-500 ease-out", mode === 'mock' ? "bg-gradient-to-r from-teal-500 to-emerald-500" : "bg-gradient-to-r from-blue-500 to-purple-500")} style={{ width: (mode === 'ai_custom' || mode === 'ai_rank_match') ? '100%' : `${((currentQuestionIndex + 1) / questions.length) * 100}%` }} />
             </div>
 
             <div className="flex-1 flex flex-col justify-start mb-4">
@@ -893,10 +714,10 @@ export default function Quiz() {
                     ) : (
                         <button
                             onClick={handleNext}
-                            disabled={(mode === 'ai_custom' || mode === 'role_play' || mode === 'ai_rank_match') && isGenerating}
+                            disabled={(mode === 'ai_custom' || mode === 'ai_rank_match') && isGenerating}
                             className="btn w-full md:w-auto flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-blue-900 hover:bg-gray-100 rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-white/10 text-base disabled:opacity-70 disabled:cursor-wait"
                         >
-                            {(mode === 'ai_custom' || mode === 'role_play' || mode === 'ai_rank_match') ? '次の問題へ' : (currentQuestionIndex < questions.length - 1 ? '次へ進む' : '結果を見る')} <ArrowRight size={18} />
+                            {(mode === 'ai_custom' || mode === 'ai_rank_match') ? '次の問題へ' : (currentQuestionIndex < questions.length - 1 ? '次へ進む' : '結果を見る')} <ArrowRight size={18} />
                         </button>
                     )}
                 </div>

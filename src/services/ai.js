@@ -320,6 +320,62 @@ export async function generateRolePlayQuestion(roleId, difficulty = 'Medium') {
     }
 }
 
+// 家庭教師チャットメッセージ送信
+export async function sendTutorMessage(history, userMessage, systemContext) {
+    const apiKey = getValidatedGeminiApiKey(await getApiKey());
+
+    const systemPrompt = `あなたは統計検定準1級受験生の専属家庭教師です。
+【学習プロフィール】${systemContext.tutorMemory || '（記録なし）'}
+【統計】総${systemContext.totalAttempts}問 正答率${systemContext.accuracy}%
+【ルール】雑談OK。数式より具体例優先。責めない。今日やることを1つ提示。返答は適切な長さで。`;
+
+    const nextMessages = [
+        ...history,
+        { role: "user", parts: [{ text: userMessage + `\n\n(${systemPrompt})` }] }
+    ];
+
+    return callGeminiApi({
+        contents: nextMessages,
+        generationConfig: { temperature: 0.8, maxOutputTokens: 3000 }
+    }, apiKey);
+}
+
+// 今日のひとことメッセージ生成
+export async function generateTutorDailyMessage(context) {
+    const apiKey = getValidatedGeminiApiKey(await getApiKey());
+
+    const prompt = `あなたは統計検定準1級受験生の専属家庭教師です。
+以下のデータを踏まえて、今日の学習を始める気持ちになれる短い励ましとアドバイスを2〜3文で書いてください。
+総回答数: ${context.totalAttempts}問 / 正答率: ${context.accuracy}% / 連続起動: ${context.launchStreak}日
+プロフィール: ${context.tutorMemory || '初めての利用'}
+出力は2〜3文のみ。Markdownなし。`;
+
+    return callGeminiApi({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.9, maxOutputTokens: 200 }
+    }, apiKey);
+}
+
+// 会話からtutorMemoryを更新
+export async function updateTutorMemoryFromConversation(currentMemory, conversation) {
+    const apiKey = getValidatedGeminiApiKey(await getApiKey());
+
+    const convText = conversation
+        .map(m => `${m.role === 'user' ? 'ユーザー' : '家庭教師'}: ${m.text}`)
+        .join('\n');
+
+    const prompt = `以下の会話を分析して、ユーザーの学習プロフィールをJSON形式で更新してください。
+【現在のプロフィール】${currentMemory || '{}'}
+【今回の会話】${convText}
+以下のJSON形式のみ返してください:
+{"weakTopics":[],"strongTopics":[],"thinkingPatterns":"","confusedConcepts":[],"effectiveExplanations":"","sessionCount":0,"lastUpdated":"${new Date().toISOString().slice(0, 10)}"}`;
+
+    return callGeminiApi({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.3, response_mime_type: "application/json" }
+    }, apiKey);
+}
+
 // 総括生成
 export async function generateSessionFeedback(sessionData) {
     const apiKey = getValidatedGeminiApiKey(await getApiKey());

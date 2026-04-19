@@ -1,14 +1,14 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, BarChart2, History, Settings, Activity, Map } from 'lucide-react'; // Map追加
+import { Home, BarChart2, GraduationCap, History, Settings, Map } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 const navItems = [
     { icon: Home, label: 'ホーム', path: '/' },
-    { icon: Map, label: 'カリキュラム', path: '/curriculum' }, // 追加
+    { icon: Map, label: 'カリキュラム', path: '/curriculum' },
     { icon: BarChart2, label: '分析', path: '/analysis' },
-    { icon: Activity, label: '統計ラボ', path: '/statistics' },
     { icon: History, label: '復習', path: '/review' },
+    { icon: GraduationCap, label: '家庭教師', path: '/tutor' },
 ];
 
 // ... (以下変更なし)

@@ -12,6 +12,16 @@ db.version(7).stores({
   userBadges: 'badgeId, unlockedAt',
 });
 
+db.version(8).stores({
+  scores: '++id, score, timestamp',
+  attempts: '++id, questionId, isCorrect, timeTaken, timestamp, chatLog, confidence',
+  settings: 'key, value',
+  customQuestions: '++id, text, options, correctIndex, difficulty, category, timestamp',
+  learningState: 'questionId, nextReviewDate',
+  userBadges: 'badgeId, unlockedAt',
+  tutorMemory: 'id, content, updatedAt',
+});
+
 const SYNC_META_PREFIX = '__sync_';
 const localDataChangeListeners = new Set();
 
@@ -219,6 +229,68 @@ export const getDueReviewQuestionIds = async () => {
     .toArray();
 
   return dueItems.map((item) => item.questionId);
+};
+
+// --- Exam date helpers ---
+export const saveExamDate = async (dateStr) => {
+  await db.settings.put({ key: 'examDate', value: dateStr });
+  await markLocalDataChanged();
+};
+
+export const getExamDate = async () => {
+  const setting = await db.settings.get('examDate');
+  return setting ? setting.value : null;
+};
+
+// --- Launch streak helpers ---
+export const recordDailyLaunch = async () => {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const lastLaunch = await db.settings.get('lastLaunchDate');
+  const streakSetting = await db.settings.get('launchStreak');
+  const currentStreak = streakSetting ? parseInt(streakSetting.value, 10) : 0;
+
+  if (lastLaunch?.value === todayStr) {
+    return currentStreak;
+  }
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+  const newStreak = lastLaunch?.value === yesterdayStr ? currentStreak + 1 : 1;
+
+  await db.settings.put({ key: 'lastLaunchDate', value: todayStr });
+  await db.settings.put({ key: 'launchStreak', value: newStreak });
+  return newStreak;
+};
+
+export const getLaunchStreak = async () => {
+  const setting = await db.settings.get('launchStreak');
+  return setting ? parseInt(setting.value, 10) : 0;
+};
+
+// --- Tutor memory helpers ---
+export const getTutorMemory = async () => {
+  const row = await db.tutorMemory.get('profile');
+  return row ? row.content : null;
+};
+
+export const saveTutorMemory = async (content) => {
+  await db.tutorMemory.put({ id: 'profile', content, updatedAt: new Date().toISOString() });
+};
+
+// --- Tutor daily message helpers ---
+export const saveTutorDailyMessage = async (message) => {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  await db.settings.put({ key: 'lastTutorMessage', value: message });
+  await db.settings.put({ key: 'lastTutorDate', value: todayStr });
+};
+
+export const getTutorDailyMessage = async () => {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const dateSetting = await db.settings.get('lastTutorDate');
+  if (dateSetting?.value !== todayStr) return null;
+  const msgSetting = await db.settings.get('lastTutorMessage');
+  return msgSetting ? msgSetting.value : null;
 };
 
 // --- Data management ---

@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ArrowLeft,
   Ban,
+  Calendar,
   Cloud,
   Download,
   FileJson,
@@ -22,11 +23,13 @@ import {
   exportAllData,
   getApiKey,
   getBlockedSubcategories,
+  getExamDate,
   getTargetScore,
   importData,
   removeBlockedSubcategory,
   resetAllData,
   saveApiKey,
+  saveExamDate,
   saveTargetScore,
 } from '../services/db';
 import {
@@ -50,6 +53,7 @@ export default function Settings() {
 
   const [apiKey, setApiKey] = useState('');
   const [targetScore, setTargetScore] = useState(80);
+  const [examDate, setExamDate] = useState('');
   const [saved, setSaved] = useState(false);
 
   const [syncState, setSyncState] = useState(getCloudSyncState());
@@ -65,6 +69,9 @@ export default function Settings() {
 
       const target = await getTargetScore();
       if (target) setTargetScore(target);
+
+      const exam = await getExamDate();
+      if (exam) setExamDate(exam);
     };
 
     loadSettings();
@@ -80,6 +87,7 @@ export default function Settings() {
   const handleSave = async () => {
     await saveApiKey(apiKey);
     await saveTargetScore(targetScore);
+    if (examDate) await saveExamDate(examDate);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -257,6 +265,28 @@ export default function Settings() {
           <p className="text-xs text-gray-500 mt-3">
             自動同期は「起動時 / ローカル更新時 / 一定間隔 / オンライン復帰時」に実行されます。
           </p>
+        </div>
+
+        <div className="card glass-card p-6">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Calendar className="text-blue-400" size={20} />
+            試験日設定
+          </h2>
+          <p className="text-sm text-gray-400 mb-4">設定するとダッシュボードにカウントダウンと日次目標が表示されます。</p>
+          <input
+            type="date"
+            value={examDate}
+            onChange={(e) => setExamDate(e.target.value)}
+            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+          />
+          {examDate && (
+            <button
+              onClick={() => setExamDate('')}
+              className="mt-2 text-xs text-gray-500 hover:text-red-400 transition-colors"
+            >
+              クリア
+            </button>
+          )}
         </div>
 
         <div className="card glass-card p-6">

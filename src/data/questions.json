@@ -1,1 +1,902 @@
-[]
+[
+  {
+    "id": "fixed-001",
+    "text": "独立な確率変数 $X_1 \\sim N(\\mu_1, \\sigma_1^2)$、$X_2 \\sim N(\\mu_2, \\sigma_2^2)$ があるとき、$X_1 + X_2$ が従う分布はどれか？",
+    "options": [
+      "$N(\\mu_1+\\mu_2,\\ \\sigma_1^2+\\sigma_2^2)$",
+      "$N(\\mu_1 \\cdot \\mu_2,\\ \\sigma_1^2 \\cdot \\sigma_2^2)$",
+      "$N(\\mu_1+\\mu_2,\\ \\sigma_1^2 \\cdot \\sigma_2^2)$",
+      "$N(\\mu_1 \\cdot \\mu_2,\\ \\sigma_1^2+\\sigma_2^2)$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "確率と分布",
+    "subcategory": "確率変数の線形結合",
+    "explanation": "正規分布の再生性：独立な正規確率変数の和は正規分布に従い、平均・分散はそれぞれ加算される。$X_1+X_2 \\sim N(\\mu_1+\\mu_2,\\ \\sigma_1^2+\\sigma_2^2)$。"
+  },
+  {
+    "id": "fixed-002",
+    "text": "ポアソン分布 $Po(\\lambda)$ に従う確率変数 $X$ の期待値と分散の組み合わせとして正しいものはどれか？",
+    "options": [
+      "$E[X]=\\lambda$、$V[X]=\\lambda$",
+      "$E[X]=\\lambda$、$V[X]=\\lambda^2$",
+      "$E[X]=\\sqrt{\\lambda}$、$V[X]=\\lambda$",
+      "$E[X]=1/\\lambda$、$V[X]=1/\\lambda^2$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "確率と分布",
+    "subcategory": "ポアソン分布",
+    "explanation": "ポアソン分布 $Po(\\lambda)$ では期待値と分散がともに $\\lambda$ に等しいことが特徴的。$P(X=k)=e^{-\\lambda}\\lambda^k/k!$ から積率母関数を使って導ける。"
+  },
+  {
+    "id": "fixed-003",
+    "text": "母分散 $\\sigma^2$ が既知のとき、標本平均 $\\bar{X}$（標本サイズ $n$）の標準誤差はどれか？",
+    "options": [
+      "$\\sigma/\\sqrt{n}$",
+      "$\\sigma \\cdot n$",
+      "$\\sigma^2/n$",
+      "$\\sigma / n$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "確率と分布",
+    "subcategory": "中心極限定理",
+    "explanation": "$V[\\bar{X}] = \\sigma^2/n$ であるから、標準誤差（標準偏差）は $SD[\\bar{X}] = \\sigma/\\sqrt{n}$。中心極限定理と合わせて、$\\bar{X} \\sim N(\\mu, \\sigma^2/n)$ となる。"
+  },
+  {
+    "id": "fixed-004",
+    "text": "正規分布 $N(\\mu, \\sigma^2)$ から $n$ 個の標本 $x_1, ..., x_n$ を得た。$\\sigma^2$ の最尤推定量はどれか？",
+    "options": [
+      "$\\frac{1}{n}\\sum_{i=1}^n(x_i - \\bar{x})^2$",
+      "$\\frac{1}{n-1}\\sum_{i=1}^n(x_i - \\bar{x})^2$",
+      "$\\frac{1}{n}\\sum_{i=1}^n x_i^2$",
+      "$\\frac{1}{n-1}\\sum_{i=1}^n x_i^2$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "確率と分布",
+    "subcategory": "最尤法",
+    "explanation": "正規分布の対数尤度を $\\sigma^2$ で微分してゼロとおくと、最尤推定量は $\\hat{\\sigma}^2 = \\frac{1}{n}\\sum(x_i-\\bar{x})^2$（$n$ で割る）。不偏分散（$n-1$ で割る）とは異なる点に注意。"
+  },
+  {
+    "id": "fixed-005",
+    "text": "独立な標準正規変数 $Z_1, ..., Z_k \\sim N(0,1)$ の二乗和 $\\sum_{i=1}^k Z_i^2$ が従う分布はどれか？",
+    "options": [
+      "自由度 $k$ のカイ二乗分布 $\\chi^2(k)$",
+      "自由度 $k$ の $t$ 分布",
+      "自由度 $(k, k)$ の $F$ 分布",
+      "自由度 $k-1$ のカイ二乗分布"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "確率と分布",
+    "subcategory": "カイ二乗分布",
+    "explanation": "カイ二乗分布の定義そのもの：独立な標準正規変数の二乗和 $\\sum_{i=1}^k Z_i^2 \\sim \\chi^2(k)$。自由度は変数の個数 $k$ に等しい。"
+  },
+  {
+    "id": "fixed-006",
+    "text": "$Z \\sim N(0,1)$、$V \\sim \\chi^2(k)$ が独立のとき、$Z/\\sqrt{V/k}$ が従う分布はどれか？",
+    "options": [
+      "自由度 $k$ の $t$ 分布",
+      "自由度 $k$ のカイ二乗分布",
+      "自由度 $(1, k)$ の $F$ 分布",
+      "自由度 $k-1$ の $t$ 分布"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "確率と分布",
+    "subcategory": "t分布",
+    "explanation": "$t$ 分布の定義：$Z \\sim N(0,1)$ と $V \\sim \\chi^2(k)$ が独立のとき、$T = Z/\\sqrt{V/k} \\sim t(k)$。この性質は母平均の検定・推定で頻繁に用いられる。"
+  },
+  {
+    "id": "fixed-007",
+    "text": "$X \\sim N(\\mu, \\sigma^2)$ のとき、$Y = e^X$ が従う分布はどれか？",
+    "options": [
+      "対数正規分布",
+      "ガンマ分布",
+      "ベータ分布",
+      "指数分布"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "確率と分布",
+    "subcategory": "変数変換",
+    "explanation": "$Y = e^X$ とすると $\\log Y = X \\sim N(\\mu, \\sigma^2)$。対数をとると正規分布に従う変数を対数正規分布という。収益率や生存時間のモデルによく登場する。"
+  },
+  {
+    "id": "fixed-008",
+    "text": "二変量正規分布 $(X, Y)$ において、$X = x$ を与えたときの $Y$ の条件付き期待値 $E[Y|X=x]$ の形として正しいものはどれか？",
+    "options": [
+      "$x$ の線形関数（$a + bx$ の形）",
+      "$x^2$ の二次関数",
+      "$Y$ の周辺平均 $\\mu_Y$ に等しい",
+      "$x$ の指数関数"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Hard",
+    "category": "確率と分布",
+    "subcategory": "多変量正規分布",
+    "explanation": "二変量正規分布では $E[Y|X=x] = \\mu_Y + \\rho \\frac{\\sigma_Y}{\\sigma_X}(x - \\mu_X)$（線形回帰の形）。これは多変量正規分布の重要な性質で、条件付き分布も正規分布になる。"
+  },
+  {
+    "id": "fixed-009",
+    "text": "標本分散 $S^2 = \\frac{1}{n-1}\\sum_{i=1}^n(X_i - \\bar{X})^2$ は母分散 $\\sigma^2$ のどのような推定量か？",
+    "options": [
+      "不偏推定量（$E[S^2] = \\sigma^2$）",
+      "最尤推定量",
+      "常に最小分散不偏推定量（UMVUE）",
+      "一致推定量のみ（不偏ではない）"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "統計的推測",
+    "subcategory": "点推定(不偏性・一致性・有効性)",
+    "explanation": "$E[S^2] = \\sigma^2$ が成り立つため $S^2$ は $\\sigma^2$ の不偏推定量。一方、最尤推定量は $\\hat{\\sigma}^2 = \\frac{1}{n}\\sum(X_i-\\bar{X})^2$（$n$ で割る）であり偏りがある。"
+  },
+  {
+    "id": "fixed-010",
+    "text": "母分散 $\\sigma^2$ が既知のとき、母平均 $\\mu$ の95%信頼区間として正しいものはどれか？",
+    "options": [
+      "$\\bar{x} \\pm 1.96 \\cdot \\sigma/\\sqrt{n}$",
+      "$\\bar{x} \\pm 2.58 \\cdot \\sigma/\\sqrt{n}$",
+      "$\\bar{x} \\pm 1.645 \\cdot \\sigma/\\sqrt{n}$",
+      "$\\bar{x} \\pm 1.96 \\cdot \\sigma/n$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "統計的推測",
+    "subcategory": "区間推定(母平均・母分散・母比率)",
+    "explanation": "標準正規分布の95パーセント点は $z_{0.025} = 1.96$。信頼区間は $\\bar{x} \\pm 1.96 \\cdot \\sigma/\\sqrt{n}$。99%なら 2.576、90%なら 1.645。"
+  },
+  {
+    "id": "fixed-011",
+    "text": "仮説検定において「帰無仮説 $H_0$ が真であるにもかかわらず $H_0$ を棄却してしまう」誤りを何というか？",
+    "options": [
+      "第一種の過誤（$\\alpha$ エラー）",
+      "第二種の過誤（$\\beta$ エラー）",
+      "検出力の低下",
+      "有意水準の超過"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "統計的推測",
+    "subcategory": "第一種・第二種の過誤",
+    "explanation": "第一種の過誤（タイプⅠエラー）：真の $H_0$ を棄却する確率 $= \\alpha$（有意水準）。第二種の過誤（タイプⅡエラー）：偽の $H_0$ を採択する確率 $= \\beta$。検出力 $= 1 - \\beta$。"
+  },
+  {
+    "id": "fixed-012",
+    "text": "尤度比検定統計量 $-2\\log\\Lambda$ は、帰無仮説が真のとき漸近的にどの分布に従うか？",
+    "options": [
+      "カイ二乗分布（自由度＝制約数）",
+      "標準正規分布",
+      "$t$ 分布",
+      "$F$ 分布"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Hard",
+    "category": "統計的推測",
+    "subcategory": "尤度比検定",
+    "explanation": "ウィルクスの定理：尤度比検定統計量 $-2\\log\\Lambda = -2\\log(L_0/L_1)$ は帰無仮説のもとで漸近的に $\\chi^2(r)$ に従う。$r$ はパラメータの制約数（自由度の差）。"
+  },
+  {
+    "id": "fixed-013",
+    "text": "フィッシャー情報量 $I(\\theta)$ の定義として正しいものはどれか？（$\\ell(\\theta;x)$ はlog尤度）",
+    "options": [
+      "$I(\\theta) = E\\left[\\left(\\frac{\\partial \\ell}{\\partial \\theta}\\right)^2\\right]$",
+      "$I(\\theta) = E\\left[\\frac{\\partial^2 \\ell}{\\partial \\theta^2}\\right]$",
+      "$I(\\theta) = \\left(\\frac{\\partial \\ell}{\\partial \\theta}\\right)^2$（期待値なし）",
+      "$I(\\theta) = -\\frac{\\partial^2 \\ell}{\\partial \\theta^2}$（期待値なし）"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Hard",
+    "category": "統計的推測",
+    "subcategory": "フィッシャー情報量",
+    "explanation": "フィッシャー情報量の定義は $I(\\theta) = E[(\\partial\\ell/\\partial\\theta)^2]$。正則条件下では $I(\\theta) = -E[\\partial^2\\ell/\\partial\\theta^2]$ とも表せる。クラーメル・ラオ下界 $V[\\hat{\\theta}] \\geq 1/I(\\theta)$ に使われる。"
+  },
+  {
+    "id": "fixed-014",
+    "text": "最尤推定量が持つ漸近的な性質として正しいのはどれか？",
+    "options": [
+      "漸近的に不偏で、漸近分散がクラーメル・ラオ下界を達成する（漸近有効）",
+      "有限標本でも常に不偏である",
+      "常に十分統計量の関数として表せる",
+      "有限標本で最小分散不偏推定量になる"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Hard",
+    "category": "統計的推測",
+    "subcategory": "最尤推定量の漸近正規性",
+    "explanation": "最尤推定量は漸近的に $N(\\theta_0, I(\\theta_0)^{-1}/n)$ に従う（漸近正規性）。これにより漸近的に不偏かつクラーメル・ラオ下界を達成する（漸近有効性）。有限標本では不偏性が保証されない場合もある。"
+  },
+  {
+    "id": "fixed-015",
+    "text": "ウィルコクソンの順位和検定はどのような場面で使う検定か？",
+    "options": [
+      "2標本の分布の位置の差を検定する（正規性不要の $t$ 検定代替）",
+      "1標本の中央値が特定の値かを検定する",
+      "3群以上の位置の差を検定する",
+      "2つの分散が等しいかを検定する"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "統計的推測",
+    "subcategory": "ウィルコクソンの順位和検定",
+    "explanation": "ウィルコクソン順位和検定（マン・ホイットニーの $U$ 検定と等価）は、正規性を仮定せずに2標本の分布の位置の差を検定するノンパラメトリック法。3群以上ならクラスカル・ウォリス検定を使う。"
+  },
+  {
+    "id": "fixed-016",
+    "text": "カテゴリ数 $k$ のカテゴリカルデータに対する適合度検定（$\\chi^2$ 検定）の自由度はいくつか？",
+    "options": [
+      "$k - 1$",
+      "$k$",
+      "$k - 2$",
+      "$k + 1$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "統計的推測",
+    "subcategory": "適合度検定",
+    "explanation": "カテゴリ数 $k$ の適合度検定では、全確率 $\\sum p_i = 1$ の制約から自由度は $k-1$。一般に $m$ 個のパラメータを推定すると自由度はさらに $m$ 減り、$k-1-m$ となる。"
+  },
+  {
+    "id": "fixed-017",
+    "text": "主成分分析で第1主成分の寄与率を計算する式はどれか？（$\\lambda_i$ は $i$ 番目の固有値）",
+    "options": [
+      "$\\lambda_1 / \\sum_i \\lambda_i$",
+      "$\\lambda_1 / \\lambda_2$",
+      "$\\lambda_1^2 / \\sum_i \\lambda_i^2$",
+      "$\\sqrt{\\lambda_1} / \\sum_i \\sqrt{\\lambda_i}$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "多変量解析",
+    "subcategory": "寄与率・累積寄与率",
+    "explanation": "寄与率 $= \\lambda_j / \\sum_i \\lambda_i$（全固有値の和は変数の総分散に等しい）。累積寄与率 $= \\sum_{j=1}^m \\lambda_j / \\sum_i \\lambda_i$。通常、累積寄与率 70〜80% を目安に主成分数を決める。"
+  },
+  {
+    "id": "fixed-018",
+    "text": "主成分分析で得られる主成分について正しい記述はどれか？",
+    "options": [
+      "異なる主成分は互いに直交し、主成分スコアは無相関になる",
+      "主成分は元の変数と常に同じ分散を持つ",
+      "主成分の数は必ず元の変数の数より少なくなる",
+      "第1主成分は分散を最小化する方向"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "多変量解析",
+    "subcategory": "主成分分析(主成分スコア・負荷量)",
+    "explanation": "主成分は共分散行列の固有ベクトルであり互いに直交（無相関）。第1主成分は分散**最大化**（誤り選択肢に注意）。主成分数は最大で元の変数数に等しく、削減は任意の選択。"
+  },
+  {
+    "id": "fixed-019",
+    "text": "フィッシャーの線形判別分析において、判別関数はどの比を最大化するように構成されるか？",
+    "options": [
+      "群間分散 / 群内分散の比",
+      "群内分散のみを最大化",
+      "全分散を最小化",
+      "群間距離のみを最大化"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "多変量解析",
+    "subcategory": "判別分析(フィッシャー線形判別)",
+    "explanation": "フィッシャーの判別分析では、投影後の「群間分散 / 群内分散（群内平方和）」を最大化する方向を求める。これは $W^{-1}B$ の固有ベクトル問題に帰着する（$W$: 群内散布行列、$B$: 群間散布行列）。"
+  },
+  {
+    "id": "fixed-020",
+    "text": "因子分析において、各変数の共通因子によって説明される分散の割合を何というか？",
+    "options": [
+      "共通性（コミュナリティ）",
+      "固有値",
+      "因子負荷量",
+      "累積寄与率"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "多変量解析",
+    "subcategory": "因子分析(探索的・確認的)",
+    "explanation": "共通性（communality）は変数の分散のうち共通因子で説明できる割合。$h_i^2 = \\sum_j l_{ij}^2$（因子負荷量の二乗和）で計算。独自性（uniqueness）$= 1 - h_i^2$ と合わせて分散の分解を理解することが重要。"
+  },
+  {
+    "id": "fixed-021",
+    "text": "k-means 法によるクラスター分析のアルゴリズムが収束する条件として最も適切なものはどれか？",
+    "options": [
+      "クラスター内二乗誤差の和（Within-cluster SS）が局所最小に達したとき",
+      "全データ点が重心に一致したとき",
+      "各クラスターのサイズが均等になったとき",
+      "クラスター間距離が最大になったとき"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "多変量解析",
+    "subcategory": "非階層型クラスター分析(k-means法)",
+    "explanation": "k-means はクラスター内二乗誤差の和 $\\sum_k \\sum_{x \\in C_k} \\|x - \\mu_k\\|^2$ を最小化する。局所最小への収束は保証されるが、大域的最適解への収束は保証されない（初期値依存）。"
+  },
+  {
+    "id": "fixed-022",
+    "text": "ROC曲線のAUC（曲線下面積）が0.5に等しい場合、分類器の性能はどう解釈されるか？",
+    "options": [
+      "ランダム予測と同等の性能（識別能力なし）",
+      "完全な識別能力（AUC=1）に近い",
+      "非常に悪い識別能力（ランダムより大幅に悪い）",
+      "偽陽性率と真陽性率が等しい最良の状態"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "多変量解析",
+    "subcategory": "ROC曲線・AUC",
+    "explanation": "AUC=0.5はROC曲線が対角線（ランダム識別線）に一致することを意味し、識別能力がない。AUC=1が完全識別、AUC=0.5以下は「逆に使えば有用」なモデルを意味する。"
+  },
+  {
+    "id": "fixed-023",
+    "text": "SVMにおいて「マージン」とは何を指すか？",
+    "options": [
+      "2クラスの最も近い点（サポートベクター）を分離する距離の2倍",
+      "誤分類されたデータ点の個数",
+      "目的関数（正則化項）の値",
+      "特徴空間の次元数"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Hard",
+    "category": "多変量解析",
+    "subcategory": "サポートベクターマシン(SVM)",
+    "explanation": "SVMは各クラスに最も近い点（サポートベクター）からの距離（マージン）を最大化する超平面を求める。マージン $= 2/\\|w\\|$（$w$ は超平面の法線ベクトル）。マージン最大化は汎化性能向上につながる。"
+  },
+  {
+    "id": "fixed-024",
+    "text": "ガウス・マルコフ定理によると、線形回帰モデルのBLUE条件が満たされるとき、最小二乗推定量はどのような性質を持つか？",
+    "options": [
+      "不偏線形推定量の中で最小分散（BLUE）を持つ",
+      "すべての不偏推定量の中で最小分散を持つ",
+      "誤差が正規分布のときのみ有効である",
+      "最大尤度を与える推定量と常に一致する"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Hard",
+    "category": "回帰・線形モデル",
+    "subcategory": "ガウス・マルコフの定理",
+    "explanation": "ガウス・マルコフ定理：誤差の期待値がゼロ、等分散、無相関を仮定（正規性は不要）すると、OLS推定量は BLUE（Best Linear Unbiased Estimator）。**不偏線形推定量**の中で最小分散であることに注意。"
+  },
+  {
+    "id": "fixed-025",
+    "text": "重回帰モデルで説明変数を増やすと、（自由度修正なしの）決定係数 $R^2$ はどうなるか？",
+    "options": [
+      "単調に増加（または変わらない）",
+      "単調に減少",
+      "変化しない",
+      "増減は不定"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "回帰・線形モデル",
+    "subcategory": "決定係数・自由度修正済み決定係数",
+    "explanation": "$R^2 = 1 - SS_{残}/SS_{全}$ は説明変数を増やすと $SS_{残}$ が減少または不変なので単調増加。そのため過適合を起こしても $R^2$ は下がらない。自由度修正済み $\\bar{R}^2$ は変数追加のペナルティがあり、真に有効な変数のみで増加する。"
+  },
+  {
+    "id": "fixed-026",
+    "text": "回帰分析で多重共線性が生じた場合の典型的な症状として正しいものはどれか？",
+    "options": [
+      "回帰係数の推定値が不安定（標準誤差が大きい）になる",
+      "予測値 $\\hat{y}$ の精度が著しく低下する",
+      "残差が非正規分布になる",
+      "決定係数 $R^2$ が低下する"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "回帰・線形モデル",
+    "subcategory": "多重共線性",
+    "explanation": "多重共線性：説明変数間が強く相関していると $X^TX$ の行列式がほぼゼロになり、$(X^TX)^{-1}$ が不安定になる。個々の回帰係数の標準誤差が大きくなりp値が大きくなるが、$R^2$ や予測精度への影響は直接的でない。"
+  },
+  {
+    "id": "fixed-027",
+    "text": "ロジスティック回帰の回帰係数 $\\beta_j$ の解釈として正しいものはどれか？",
+    "options": [
+      "説明変数 $x_j$ が1単位増えたときの対数オッズ（log odds）の変化量",
+      "説明変数が1単位増えたときの発生確率の変化量",
+      "説明変数が1単位増えたときの線形予測子の変化量（OLSと同じ）",
+      "オッズ比（odds ratio）そのもの"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "回帰・線形モデル",
+    "subcategory": "ロジスティック回帰",
+    "explanation": "ロジスティック回帰：$\\log\\frac{p}{1-p} = \\beta_0 + \\beta_1 x_1 + ...$。$\\beta_j$ は「$x_j$ が1増えたときの対数オッズの変化」。$e^{\\beta_j}$ がオッズ比。確率の変化量は $x$ の値に依存し一定でない。"
+  },
+  {
+    "id": "fixed-028",
+    "text": "AIC（赤池情報量基準）の計算式として正しいものはどれか？（$k$: パラメータ数、$\\hat{L}$: 最大尤度）",
+    "options": [
+      "$-2\\log\\hat{L} + 2k$",
+      "$-2\\log\\hat{L} + k\\log n$",
+      "$2\\log\\hat{L} - 2k$",
+      "$\\log\\hat{L} + 2k$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "回帰・線形モデル",
+    "subcategory": "変数選択(AIC・BIC)",
+    "explanation": "AIC $= -2\\log\\hat{L} + 2k$。BIC $= -2\\log\\hat{L} + k\\log n$（$n$: 標本サイズ）。どちらも小さいほど良いモデル。BIC はサンプルサイズが大きいとより強くパラメータ数にペナルティを科す。"
+  },
+  {
+    "id": "fixed-029",
+    "text": "ポアソン回帰（GLMの一種）で通常使われるリンク関数はどれか？",
+    "options": [
+      "対数リンク関数 $g(\\mu) = \\log \\mu$",
+      "恒等リンク関数 $g(\\mu) = \\mu$",
+      "ロジット関数 $g(\\mu) = \\log\\frac{\\mu}{1-\\mu}$",
+      "プロビット関数 $g(\\mu) = \\Phi^{-1}(\\mu)$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "回帰・線形モデル",
+    "subcategory": "一般化線形モデル(GLM)",
+    "explanation": "ポアソン回帰のカノニカルリンクは対数 $g(\\mu) = \\log\\mu$（これにより $\\mu = e^{X\\beta} > 0$ が保証）。ロジット関数は二項分布GLM（ロジスティック回帰）に、恒等関数は正規分布GLM（通常の線形回帰）に対応。"
+  },
+  {
+    "id": "fixed-030",
+    "text": "Ridge回帰（L2正則化）の目的関数として正しいものはどれか？（$\\lambda > 0$ は正則化パラメータ）",
+    "options": [
+      "$\\sum_i(y_i - \\hat{y}_i)^2 + \\lambda\\sum_j \\beta_j^2$",
+      "$\\sum_i(y_i - \\hat{y}_i)^2 + \\lambda\\sum_j |\\beta_j|$",
+      "$\\sum_i(y_i - \\hat{y}_i)^2 \\times \\lambda\\sum_j \\beta_j^2$",
+      "$\\sum_i(y_i - \\hat{y}_i)^2 - \\lambda\\sum_j \\beta_j^2$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "回帰・線形モデル",
+    "subcategory": "L2正則化(Ridge)",
+    "explanation": "Ridge回帰はL2ペナルティ $\\lambda\\sum\\beta_j^2$ を加えた残差二乗和を最小化。Lasso（L1正則化）は $\\lambda\\sum|\\beta_j|$ を加え、スパースな解（一部 $\\beta_j=0$）が得られる。"
+  },
+  {
+    "id": "fixed-031",
+    "text": "一元配置分散分析の帰無仮説として正しいものはどれか？（$k$ 群の場合）",
+    "options": [
+      "すべての群の母平均が等しい $\\mu_1 = \\mu_2 = \\cdots = \\mu_k$",
+      "すべての群の母分散が等しい",
+      "すべての群の分布形状が等しい",
+      "少なくとも2群の母平均が等しい"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "実験計画・分散分析",
+    "subcategory": "一元配置分散分析",
+    "explanation": "一元配置ANOVAの $H_0: \\mu_1 = \\mu_2 = \\cdots = \\mu_k$（全群の平均が等しい）。$F$ 検定により棄却されたら**どこかに差がある**ことはわかるが**どの群間に差があるか**は多重比較で調べる。"
+  },
+  {
+    "id": "fixed-032",
+    "text": "二元配置分散分析において「交互作用」が有意であることが示す内容として正しいのはどれか？",
+    "options": [
+      "一方の要因の効果が他方の要因の水準によって異なる",
+      "2つの要因の主効果が両方有意である",
+      "2つの要因が独立に（相加的に）作用している",
+      "全体の分散が大きい"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "実験計画・分散分析",
+    "subcategory": "交互作用",
+    "explanation": "交互作用：因子 A の効果が因子 B の水準によって変わること（折れ線グラフが交差・非平行）。交互作用が有意なら主効果の解釈には注意が必要（各水準ごとに単純主効果を調べる）。"
+  },
+  {
+    "id": "fixed-033",
+    "text": "実験計画法のフィッシャーの3原則に**含まれない**ものはどれか？",
+    "options": [
+      "多水準化（水準数を多く設ける）",
+      "無作為化（randomization）",
+      "反復（replication）",
+      "局所管理（local control）"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "実験計画・分散分析",
+    "subcategory": "フィッシャーの3原則(無作為化・反復・局所管理)",
+    "explanation": "フィッシャーの3原則：①**無作為化**（交絡因子の影響をランダムに分散）、②**反復**（偶然変動の推定）、③**局所管理**（ブロック化により変動を分離）。「多水準化」は含まれない。"
+  },
+  {
+    "id": "fixed-034",
+    "text": "一元配置分散分析の $F$ 統計量の計算式として正しいものはどれか？",
+    "options": [
+      "群間平均平方（MSB）／群内平均平方（MSW）",
+      "群内平均平方（MSW）／群間平均平方（MSB）",
+      "群間平方和（SSB）／群内平方和（SSW）",
+      "全平均平方（MS）／群内平均平方（MSW）"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "実験計画・分散分析",
+    "subcategory": "分散分析表",
+    "explanation": "$F = MSB / MSW$（平均平方 = 平方和 ÷ 自由度）。$H_0$ が真なら $F \\sim F(k-1, N-k)$。$F$ が大きいほど群間の差が大きいことを示す。"
+  },
+  {
+    "id": "fixed-035",
+    "text": "実験計画において直交表を使う主な目的はどれか？",
+    "options": [
+      "多くの要因を少ない実験回数で効率よく調べる",
+      "実験の繰り返し数を最大化する",
+      "主効果のみを推定し交互作用を無視する",
+      "ランダム化を不要にする"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "実験計画・分散分析",
+    "subcategory": "直交配列(直交表)",
+    "explanation": "直交表（タグチ法などで利用）：全実施要因計画（フル・ファクトリアル）では水準数×要因数で実験数が爆発的に増えるのを、直交性を利用して大幅に削減する一部実施計画。"
+  },
+  {
+    "id": "fixed-036",
+    "text": "AR(1) モデル $X_t = \\phi X_{t-1} + \\varepsilon_t$ が定常であるための条件はどれか？",
+    "options": [
+      "$|\\phi| < 1$",
+      "$\\phi > 0$",
+      "$|\\phi| > 1$",
+      "$\\phi = 0$ のみ"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "時系列・確率過程",
+    "subcategory": "ARモデル・MAモデル・ARMAモデル",
+    "explanation": "AR(1) の定常条件：特性根の絶対値が1未満、すなわち $|\\phi| < 1$。$|\\phi| = 1$ はランダムウォーク（非定常）、$|\\phi| > 1$ は爆発的過程。AR(p) 一般では特性方程式の根がすべて単位円外。"
+  },
+  {
+    "id": "fixed-037",
+    "text": "弱定常（広義定常）時系列の定義として正しいものはどれか？",
+    "options": [
+      "平均と自己共分散がラグのみに依存し、時間に依存しない",
+      "すべての時点で正規分布に従う",
+      "平均がゼロである",
+      "分散が有限かつ一定である（だけ）"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "時系列・確率過程",
+    "subcategory": "定常性とホワイトノイズ",
+    "explanation": "弱定常（共分散定常）の条件：①$E[X_t] = \\mu$（時間不変）、②$Cov(X_t, X_{t+k}) = \\gamma(k)$（ラグ $k$ のみに依存）、③$V[X_t] < \\infty$。強定常は全有限次元分布が時間不変（より強い条件）。"
+  },
+  {
+    "id": "fixed-038",
+    "text": "有限状態の既約・再帰的なマルコフ連鎖の定常分布 $\\pi$ が満たす方程式はどれか？（$P$: 推移確率行列）",
+    "options": [
+      "$\\pi P = \\pi$（かつ $\\sum_i \\pi_i = 1$）",
+      "$P\\pi = \\pi$（$\\pi$ は列ベクトル）",
+      "$\\pi = P^2$",
+      "$\\pi P = I$（$I$: 単位行列）"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Hard",
+    "category": "時系列・確率過程",
+    "subcategory": "マルコフ連鎖(推移確率・既約性・再帰性)",
+    "explanation": "定常分布（不変分布）の定義：$\\pi P = \\pi$（行ベクトル表現）、$\\sum_i \\pi_i = 1$、$\\pi_i \\geq 0$。有限既約エルゴードチェーンでは一意の定常分布が存在し、初期分布によらず定常分布に収束する。"
+  },
+  {
+    "id": "fixed-039",
+    "text": "強度 $\\lambda$ のポアソン過程において、時間区間 $[0, t]$ に発生するイベント数 $N(t)$ が従う分布はどれか？",
+    "options": [
+      "$Po(\\lambda t)$（平均 $\\lambda t$ のポアソン分布）",
+      "$N(0, \\lambda t)$（正規分布）",
+      "$Bin(t, \\lambda)$（二項分布）",
+      "指数分布"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "時系列・確率過程",
+    "subcategory": "ポアソン過程",
+    "explanation": "ポアソン過程の重要な性質：$N(t) \\sim Po(\\lambda t)$。また連続するイベント間の待ち時間は $Exp(\\lambda)$ に従う。独立増分性・定常増分性も重要な性質。"
+  },
+  {
+    "id": "fixed-040",
+    "text": "ARIMA$(p, d, q)$ モデルにおいて $d$ が表すものはどれか？",
+    "options": [
+      "和分の次数（定常化のための階差の回数）",
+      "自己回帰項の次数",
+      "移動平均項の次数",
+      "ラグの最大値"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "時系列・確率過程",
+    "subcategory": "ARIMAモデル",
+    "explanation": "ARIMA$(p, d, q)$：$p$ はAR次数、$d$ は階差回数（和分次数）、$q$ はMA次数。$d$ 回階差をとると定常ARMA$(p, q)$ になる。例：ランダムウォーク $= ARIMA(0,1,0)$。"
+  },
+  {
+    "id": "fixed-041",
+    "text": "$r \\times c$ 分割表における独立性の $\\chi^2$ 検定の自由度はいくつか？",
+    "options": [
+      "$(r-1)(c-1)$",
+      "$r \\cdot c - 1$",
+      "$r + c - 1$",
+      "$(r-1) + (c-1)$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "標本・分割表・モデル",
+    "subcategory": "分割表の解析(オッズ比・連関係数)",
+    "explanation": "$r \\times c$ 分割表の独立性検定の自由度は $(r-1)(c-1)$。例：$2 \\times 2$ 表なら自由度1。期待度数の計算に行周辺度数と列周辺度数を使うため、制約数がこの値になる。"
+  },
+  {
+    "id": "fixed-042",
+    "text": "2×2分割表で曝露群のオッズが $3 : 1$、非曝露群のオッズが $1 : 1$ のとき、オッズ比はいくつか？",
+    "options": [
+      "3",
+      "1/3",
+      "2",
+      "4"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "標本・分割表・モデル",
+    "subcategory": "分割表の解析(オッズ比・連関係数)",
+    "explanation": "オッズ比 $= \\frac{\\text{曝露群のオッズ}}{\\text{非曝露群のオッズ}} = \\frac{3/1}{1/1} = 3$。オッズ比は疾患のまれな場合にリスク比の近似として使われ、ロジスティック回帰の係数の解釈にも登場する。"
+  },
+  {
+    "id": "fixed-043",
+    "text": "EMアルゴリズムについての説明として正しいものはどれか？",
+    "options": [
+      "Expectation-Maximization；欠測データや潜在変数を持つモデルで最尤推定に使う",
+      "Estimation-Minimization；分散推定の最小化アルゴリズム",
+      "Exact-Marginal；周辺尤度の厳密計算法",
+      "Error-Minimization；誤差関数を最小化する勾配法"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "標本・分割表・モデル",
+    "subcategory": "EMアルゴリズム",
+    "explanation": "EMアルゴリズム：Eステップで欠測データ・潜在変数の期待値を計算し、Mステップでその期待対数尤度を最大化するパラメータを求める反復法。各反復で尤度が単調増加する性質がある。"
+  },
+  {
+    "id": "fixed-044",
+    "text": "$k$-fold交差検証において $k = n$（$n$: データ数）の場合は何と呼ばれるか？",
+    "options": [
+      "Leave-One-Out 交差検証（LOOCV）",
+      "ブートストラップ検証",
+      "ホールドアウト検証",
+      "モンテカルロ交差検証"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "標本・分割表・モデル",
+    "subcategory": "交差検証(Cross Validation)",
+    "explanation": "$k = n$ の場合は LOOCV（1個抜き交差検証）。計算コストは高いが偏りが小さい。$k = 5$ や $k = 10$ が実用的なバランスでよく使われる。モデル選択の汎化誤差推定に用いる。"
+  },
+  {
+    "id": "fixed-045",
+    "text": "層化無作為抽出法の主な利点はどれか？",
+    "options": [
+      "母集団を均質な層に分けて各層から抽出することで推定精度を向上させられる",
+      "抽出が最もシンプルで費用が少ない",
+      "地理的に近いデータをまとめて抽出できる",
+      "各層のサンプルサイズを完全に等しくできる"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "標本・分割表・モデル",
+    "subcategory": "層化抽出法",
+    "explanation": "層化抽出：母集団を均質なグループ（層）に分割し各層から独立に抽出。層内変動が層間変動より小さい場合に単純無作為抽出より推定精度が高い。各層への配分には比例配分・最適配分などがある。"
+  },
+  {
+    "id": "fixed-046",
+    "text": "ベイズの定理で事後分布 $P(\\theta | x)$ を表す式はどれか？",
+    "options": [
+      "$P(\\theta|x) \\propto P(x|\\theta)\\, P(\\theta)$",
+      "$P(\\theta|x) = P(x|\\theta) / P(\\theta)$",
+      "$P(\\theta|x) = P(\\theta) / P(x|\\theta)$",
+      "$P(\\theta|x) = P(x|\\theta) \\cdot P(x)$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "ベイズ・シミュレーション",
+    "subcategory": "ベイズの定理",
+    "explanation": "ベイズの定理：$P(\\theta|x) = P(x|\\theta)P(\\theta)/P(x) \\propto P(x|\\theta)P(\\theta)$。**事後分布 $\\propto$ 尤度 $\\times$ 事前分布**。$P(x) = \\int P(x|\\theta)P(\\theta)d\\theta$ は周辺尤度（正規化定数）。"
+  },
+  {
+    "id": "fixed-047",
+    "text": "二項分布 $Bin(n, \\theta)$ の共役事前分布はどれか？",
+    "options": [
+      "ベータ分布 $Beta(\\alpha, \\beta)$",
+      "ガンマ分布",
+      "正規分布",
+      "ディリクレ分布"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "ベイズ・シミュレーション",
+    "subcategory": "共役事前分布",
+    "explanation": "共役事前分布：尤度と同じ関数形の事後分布が得られる事前分布。二項分布の共役はベータ分布。$\\theta \\sim Beta(\\alpha, \\beta)$ のとき、$k$ 回成功観測後の事後分布は $Beta(\\alpha+k, \\beta+n-k)$。"
+  },
+  {
+    "id": "fixed-048",
+    "text": "ポアソン分布 $Po(\\lambda)$ の共役事前分布はどれか？",
+    "options": [
+      "ガンマ分布 $Gamma(\\alpha, \\beta)$",
+      "ベータ分布",
+      "正規分布",
+      "逆ガンマ分布"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "ベイズ・シミュレーション",
+    "subcategory": "共役事前分布",
+    "explanation": "ポアソン分布のパラメータ $\\lambda$ の共役事前分布はガンマ分布。$\\lambda \\sim Gamma(\\alpha, \\beta)$ のとき、$n$ 個の観測値 $x_1,...,x_n$ を得た後の事後分布は $Gamma(\\alpha + \\sum x_i,\\ \\beta + n)$。"
+  },
+  {
+    "id": "fixed-049",
+    "text": "マルコフ連鎖モンテカルロ法（MCMC）の主な目的はどれか？",
+    "options": [
+      "解析的に困難な事後分布から標本をサンプリングする",
+      "最尤推定量を反復的に求める",
+      "事後分布の点推定値（MAP推定）のみを求める",
+      "事後分布の分散を解析的に計算する"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "ベイズ・シミュレーション",
+    "subcategory": "マルコフ連鎖モンテカルロ法(MCMC)",
+    "explanation": "MCMC（ギブスサンプリング・メトロポリス・ヘイスティングスなど）：高次元で解析的に扱えない事後分布からサンプルを生成する。得られたサンプルから期待値・分位点・信頼区間などを近似計算する。"
+  },
+  {
+    "id": "fixed-050",
+    "text": "ブートストラップ法において「ブートストラップ標本」の生成方法として正しいものはどれか？",
+    "options": [
+      "元データから復元抽出で同サイズの標本を繰り返し生成する",
+      "元データを等分割してサブセットを作る（$k$-fold と同じ）",
+      "正規分布から新たなデータを生成する（パラメトリック法のみ）",
+      "元データの順序をランダムに並べ替える（置換検定）"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Medium",
+    "category": "ベイズ・シミュレーション",
+    "subcategory": "ブートストラップ法",
+    "explanation": "（ノンパラメトリック）ブートストラップ：元データ $n$ 個から**復元抽出**で $n$ 個のブートストラップ標本を $B$ 回生成し、推定量の分布を近似する。標準誤差・信頼区間の推定に有効。"
+  },
+  {
+    "id": "fixed-f01",
+    "text": "確率変数 $X, Y$ と定数 $a, b, c$ について、$E[aX + bY + c]$ を正しく計算した結果はどれか？",
+    "options": [
+      "$aE[X] + bE[Y] + c$",
+      "$aE[X] \\cdot bE[Y] + c$",
+      "$(a+b)(E[X]+E[Y]) + c$",
+      "$a \\cdot b \\cdot E[X+Y] + c$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "基礎補修",
+    "subcategory": "期待値・分散・共分散",
+    "explanation": "期待値の線形性：$E[aX + bY + c] = aE[X] + bE[Y] + c$。この性質は $X, Y$ が独立かどうかに関係なく常に成立する。"
+  },
+  {
+    "id": "fixed-f02",
+    "text": "独立な確率変数 $X, Y$ と定数 $a, b$ について、$V[aX + bY]$ はどれか？",
+    "options": [
+      "$a^2 V[X] + b^2 V[Y]$",
+      "$a^2 V[X] \\cdot b^2 V[Y]$",
+      "$(a+b)^2(V[X] + V[Y])$",
+      "$V[X] + V[Y]$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "基礎補修",
+    "subcategory": "期待値・分散・共分散",
+    "explanation": "独立のとき $V[aX+bY] = a^2 V[X] + b^2 V[Y]$。相関がある場合は $V[aX+bY] = a^2V[X] + 2ab\\cdot Cov(X,Y) + b^2V[Y]$ となる。"
+  },
+  {
+    "id": "fixed-f03",
+    "text": "$P(A)=0.4$、$P(B)=0.3$、$P(A \\cap B)=0.12$ のとき、$P(A|B)$（$B$ を与えたときの $A$ の条件付き確率）はいくつか？",
+    "options": [
+      "0.4",
+      "0.3",
+      "0.12",
+      "0.7"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "基礎補修",
+    "subcategory": "条件付き確率・ベイズの定理",
+    "explanation": "$P(A|B) = P(A \\cap B)/P(B) = 0.12/0.3 = 0.4$。また $P(A|B) = P(A)$ なので $A$ と $B$ は独立（$P(A \\cap B) = P(A)P(B) = 0.12$ も確認できる）。"
+  },
+  {
+    "id": "fixed-f04",
+    "text": "$\\ln(e^2 \\cdot e^3)$ を計算するといくつか？（$\\ln$ は自然対数）",
+    "options": [
+      "5",
+      "6",
+      "$e^5$",
+      "$e^6$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "基礎補修",
+    "subcategory": "期待値・分散・共分散",
+    "explanation": "$\\ln(e^2 \\cdot e^3) = \\ln(e^{2+3}) = \\ln(e^5) = 5$。または $\\ln(e^2) + \\ln(e^3) = 2 + 3 = 5$。対数の性質 $\\ln(xy) = \\ln x + \\ln y$、$\\ln(e^a) = a$ は統計でも頻出。"
+  },
+  {
+    "id": "fixed-f05",
+    "text": "$A = \\begin{pmatrix} 1 & 2 \\\\ 3 & 4 \\end{pmatrix}$、$B = \\begin{pmatrix} 0 & 1 \\\\ 1 & 0 \\end{pmatrix}$ のとき、積 $AB$ の $(1,1)$ 成分はいくつか？",
+    "options": [
+      "2",
+      "0",
+      "1",
+      "3"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "基礎補修",
+    "subcategory": "期待値・分散・共分散",
+    "explanation": "$(AB)_{11} = (1)(0) + (2)(1) = 0 + 2 = 2$。行列の積は「左の行」と「右の列」の内積。多変量統計では $X^TX$ や共分散行列の計算で必須。"
+  },
+  {
+    "id": "fixed-f06",
+    "text": "2×2行列 $A = \\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}$ の行列式 $\\det(A)$ はどれか？",
+    "options": [
+      "$ad - bc$",
+      "$ac - bd$",
+      "$ab - cd$",
+      "$ad + bc$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "基礎補修",
+    "subcategory": "期待値・分散・共分散",
+    "explanation": "$\\det(A) = ad - bc$。行列式がゼロでなければ逆行列が存在する（正則行列）。多変量解析では共分散行列 $\\Sigma$ の行列式・逆行列が重要（多変量正規分布の密度関数など）。"
+  },
+  {
+    "id": "fixed-f07",
+    "text": "$X \\sim N(5, 4)$ のとき、$Z = (X-5)/2$ が従う分布はどれか？",
+    "options": [
+      "$N(0, 1)$（標準正規分布）",
+      "$N(5, 4)$（元の分布と同じ）",
+      "$N(0, 4)$",
+      "$N(5, 1)$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "基礎補修",
+    "subcategory": "正規分布",
+    "explanation": "標準化：$Z = (X-\\mu)/\\sigma = (X-5)/2$。$E[Z] = (E[X]-5)/2 = 0$、$V[Z] = V[X]/4 = 4/4 = 1$。よって $Z \\sim N(0,1)$。統計的検定の多くで標準化が使われる。"
+  },
+  {
+    "id": "fixed-f08",
+    "text": "大数の法則が示す内容として正しいのはどれか？",
+    "options": [
+      "標本平均は標本サイズが大きくなると母平均に確率収束する",
+      "標本平均の分布が正規分布に近づく",
+      "標本分散が母分散より小さくなる",
+      "標本サイズによらず標本平均は常に母平均に等しい"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "基礎補修",
+    "subcategory": "大数の法則",
+    "explanation": "大数の法則：$n \\to \\infty$ で $\\bar{X}_n \\xrightarrow{P} \\mu$（確率収束）。「分布が正規分布に近づく」は中心極限定理。大数の法則は推定の一致性の基礎となる。"
+  },
+  {
+    "id": "fixed-f09",
+    "text": "$X \\sim Bin(n, p)$ の期待値と分散の組み合わせとして正しいのはどれか？",
+    "options": [
+      "$E[X]=np$、$V[X]=np(1-p)$",
+      "$E[X]=np$、$V[X]=np^2$",
+      "$E[X]=n/p$、$V[X]=np(1-p)$",
+      "$E[X]=np(1-p)$、$V[X]=np$"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "基礎補修",
+    "subcategory": "二項分布",
+    "explanation": "二項分布 $Bin(n, p)$：$n$ 回独立なベルヌーイ試行の成功回数。$E[X] = np$、$V[X] = np(1-p)$。$p = 0.5$ のとき分散最大。$n$ が大きく $p$ が中程度なら正規近似が使える。"
+  },
+  {
+    "id": "fixed-f10",
+    "text": "$Z \\sim N(0, 1)$ のとき、$P(-1.96 \\leq Z \\leq 1.96)$ はおよそいくつか？",
+    "options": [
+      "0.95（約95%）",
+      "0.90（約90%）",
+      "0.99（約99%）",
+      "0.68（約68%）"
+    ],
+    "correctIndex": 0,
+    "difficulty": "Easy",
+    "category": "基礎補修",
+    "subcategory": "正規分布",
+    "explanation": "標準正規分布の重要な値：$P(-1.645 \\leq Z \\leq 1.645) \\approx 0.90$、$P(-1.96 \\leq Z \\leq 1.96) \\approx 0.95$、$P(-2.576 \\leq Z \\leq 2.576) \\approx 0.99$、$P(-1 \\leq Z \\leq 1) \\approx 0.68$。"
+  }
+]
