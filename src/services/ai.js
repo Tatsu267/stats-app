@@ -20,6 +20,22 @@ function getValidatedGeminiApiKey(rawApiKey) {
     return apiKey;
 }
 
+function parseGeneratedJson(jsonString) {
+    try {
+        return JSON.parse(jsonString);
+    } catch (error) {
+        const repaired = String(jsonString)
+            // Escape stray backslashes that break JSON parsing while preserving valid escapes.
+            .replace(/\\(?!["\\/bfnrtu])/g, '\\\\')
+            // Gemini sometimes wraps JSON in code fences despite the prompt.
+            .replace(/^```json\s*/i, '')
+            .replace(/^```\s*/i, '')
+            .replace(/\s*```$/, '');
+
+        return JSON.parse(repaired);
+    }
+}
+
 // 共通リクエスト処理
 async function callGeminiApi(payload, apiKey) {
     let lastError = null;
@@ -193,7 +209,7 @@ export async function generateAiQuestion(category, difficulty = 'Medium', specif
     }, apiKey);
 
     try {
-        let result = JSON.parse(jsonString);
+        let result = parseGeneratedJson(jsonString);
 
         if (Array.isArray(result)) {
             if (result.length === 0) throw new Error("AIが空のデータを返しました");
@@ -286,7 +302,7 @@ export async function generateRolePlayQuestion(roleId, difficulty = 'Medium') {
     }, apiKey);
 
     try {
-        let result = JSON.parse(jsonString);
+        let result = parseGeneratedJson(jsonString);
 
         if (Array.isArray(result)) {
             if (result.length === 0) throw new Error("AIが空のデータを返しました");
